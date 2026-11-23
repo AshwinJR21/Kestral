@@ -112,7 +112,7 @@ POSTGRES_USER=guardian
 POSTGRES_PASSWORD=guardian_dev_only
 POSTGRES_DB=guardian
 POSTGRES_PORT=5432
-DATABASE_URL=postgresql+psycopg://guardian:guardian_dev_only@localhost:5432/guardian
+DATABASE_URL=postgresql+psycopg://guardian:guardian_dev_only@127.0.0.1:5432/guardian
 
 # Resolved relative to the PROJECT ROOT by app/config.py, not working directory.
 WORKSPACE_ROOT=data/workspaces
@@ -120,6 +120,7 @@ SCAN_OUTPUT_ROOT=data/scans
 MAX_REPOSITORY_SIZE_MB=200
 MAX_FILE_COUNT=30000
 MAX_MANIFEST_SIZE_MB=8
+MAX_ARTIFACT_SIZE_MB=100
 GIT_CLONE_TIMEOUT_SECONDS=120
 SYFT_TIMEOUT_SECONDS=120
 MAX_ACTIVE_SCANS=1
@@ -240,7 +241,7 @@ docker compose down                # remove container/network, keep named volume
 # DANGEROUS: docker compose down -v  # permanently deletes your local DB volume
 ```
 
-If `5432` is occupied, set `POSTGRES_PORT=5433` and adjust `DATABASE_URL` in **your** `.env` to `localhost:5433`. On Windows Docker Desktop must be running, not merely installed.
+If `5432` is occupied, set `POSTGRES_PORT=5433` and adjust `DATABASE_URL` in **your** `.env` to `127.0.0.1:5433`. On Windows Docker Desktop must be running, not merely installed.
 
 ## 5. Backend Python environment
 

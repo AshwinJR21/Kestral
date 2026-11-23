@@ -38,6 +38,7 @@ def test_valid_repository_urls(url: str, ref: str | None, expected: tuple[str, .
         ("https://github.com/example/repository", "--upload-pack=evil"),
         ("https://github.com/example/repository", "../main"),
         ("https://github.com/example/repository", "refs//heads/main"),
+        ("https://github.com/example/repository", "feature/.hidden"),
         ("https://github.com/example/repository\n--config=evil", None),
     ],
 )

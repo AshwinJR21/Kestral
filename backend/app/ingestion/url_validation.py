@@ -1,6 +1,8 @@
 """Strict validation for the public-GitHub-only MVP input boundary."""
 
 import re
+import shutil
+import subprocess
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
@@ -59,6 +61,21 @@ def validate_repo_url(url: str, ref: str | None) -> ValidatedRepository:
         or ref.endswith(("/", ".", ".lock"))
     ):
         raise ValueError("Invalid branch/tag")
+    if ref is not None:
+        git_executable = shutil.which("git")
+        if git_executable is None:
+            raise RuntimeError("Git executable is required to validate branch/tag names")
+        result = subprocess.run(
+            [git_executable, "check-ref-format", "--branch", ref],
+            shell=False,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise ValueError("Invalid or unsupported branch/tag")
 
     return ValidatedRepository(
         owner=owner,

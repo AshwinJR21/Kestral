@@ -3,7 +3,7 @@
 > **Know What You Build. Trust What You Ship.**  
 > Bosch / Amrita hackathon · implementation blueprint v1.0 · 23 November 2026
 
-**Status:** the M1 bootstrap publishes the backend environment, schema v1.0 contracts, OpenAPI scaffold, initial database migration and guarded ingestion utilities. M2-M5 implementations and live scan orchestration are not integrated yet. **Do not interpret an illustrative JSON payload as a successful scan.**
+**Status:** the M1 platform runtime is implemented: PostgreSQL-backed scan lifecycle, secure GitHub ingestion, guarded workspaces, typed orchestration, atomic artifacts, versioned API endpoints and restart recovery. M2-M5 implementations are developed and merged independently; until M2-M4 land, a real submission safely fails at the first unavailable module instead of claiming completion. **Do not interpret an illustrative JSON payload as a successful scan.**
 
 ## Start here
 
@@ -350,4 +350,4 @@ def build_graph(document: DependencyDocument, app_name: str) -> GraphDocument: .
 - Docker Desktop: https://docs.docker.com/desktop/ ; uv lock conventions: https://docs.astral.sh/uv/concepts/projects/sync/
 - Cytoscape.js: https://js.cytoscape.org/ ; NetworkX: https://networkx.org/documentation/stable/
 
-**Next action:** Review and merge the M1 bootstrap PR, then branch each workstream from the updated `main`. Members 2-5 can proceed in parallel using their plans and the committed schema fixtures.
+**Next action:** Review and merge the M1 runtime PR. As M2-M4 module PRs land, run their tests and the fixture-backed M1 worker tests, then perform one authorized end-to-end scan before integrating M5's live UI.
