@@ -1,7 +1,9 @@
 import subprocess
 from pathlib import Path
 
-from app.ingestion.cloner import clone_public_repo
+import pytest
+
+from app.ingestion.cloner import clone_public_repo, inspect_checkout
 from app.ingestion.url_validation import ValidatedRepository
 
 
@@ -38,4 +40,34 @@ def test_clone_uses_hardened_noninteractive_arguments(monkeypatch, tmp_path: Pat
     assert environment["GIT_TERMINAL_PROMPT"] == "0"
     assert "GITHUB_TOKEN" not in environment
     assert "SSH_AUTH_SOCK" not in environment
+
+
+def test_checkout_metadata_records_sha_and_branch(monkeypatch, tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def fake_run(arguments: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        if "rev-parse" in arguments:
+            return subprocess.CompletedProcess(arguments, 0, "a" * 40 + "\n", "")
+        return subprocess.CompletedProcess(arguments, 0, "main\n", "")
+
+    monkeypatch.setattr("app.ingestion.cloner.shutil.which", lambda *_args, **_kwargs: "git")
+    monkeypatch.setattr("app.ingestion.cloner.subprocess.run", fake_run)
+    metadata = inspect_checkout(repo, requested_ref=None, timeout=10)
+    assert metadata.commit_sha == "a" * 40
+    assert metadata.resolved_ref == "main"
+
+
+def test_checkout_metadata_rejects_unsupported_object_format(
+    monkeypatch, tmp_path: Path
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.setattr("app.ingestion.cloner.shutil.which", lambda *_args, **_kwargs: "git")
+    monkeypatch.setattr(
+        "app.ingestion.cloner.subprocess.run",
+        lambda arguments, **_kwargs: subprocess.CompletedProcess(arguments, 0, "b" * 64, ""),
+    )
+    with pytest.raises(RuntimeError, match="object format"):
+        inspect_checkout(repo, requested_ref=None, timeout=10)
 

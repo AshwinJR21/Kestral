@@ -1,5 +1,6 @@
 """Contract-shaped API errors and FastAPI exception handlers."""
 
+import logging
 from collections.abc import Mapping
 
 from fastapi import FastAPI, Request
@@ -8,6 +9,8 @@ from fastapi.responses import JSONResponse
 from pydantic import JsonValue
 
 from app.schemas.error import ErrorDetail, ErrorResponse
+
+logger = logging.getLogger(__name__)
 
 
 class ApiProblem(Exception):
@@ -62,6 +65,17 @@ def register_exception_handlers(app: FastAPI) -> None:
                 code="INVALID_REQUEST",
                 message="Request validation failed",
                 details={"issues": issues},
+            )
+        )
+
+    @app.exception_handler(Exception)
+    async def unexpected_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+        logger.exception("unhandled API error", exc_info=exc)
+        return _response(
+            ApiProblem(
+                status=500,
+                code="INTERNAL_ERROR",
+                message="The service encountered an unexpected error",
             )
         )
 

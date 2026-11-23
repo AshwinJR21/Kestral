@@ -30,12 +30,15 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    database_url: str = "postgresql+psycopg://guardian:guardian_dev_only@localhost:5432/guardian"
+    database_url: str = (
+        "postgresql+psycopg://guardian:guardian_dev_only@127.0.0.1:5432/guardian"
+    )
     workspace_root: Path = Path("data/workspaces")
     scan_output_root: Path = Path("data/scans")
     max_repository_size_mb: PositiveInt = 200
     max_file_count: PositiveInt = 30_000
     max_manifest_size_mb: PositiveInt = 8
+    max_artifact_size_mb: PositiveInt = 100
     git_clone_timeout_seconds: PositiveInt = 120
     syft_timeout_seconds: PositiveInt = 120
     max_active_scans: PositiveInt = 1
