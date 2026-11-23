@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kestral SBOM</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: #fff; color: #000; font: 13px/1.45 ui-monospace, Menlo, Consolas, monospace; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  h2 { font-size: 14px; margin: 24px 0 8px; border-bottom: 1px solid #000; padding-bottom: 4px; }
+  input, select, button { font: inherit; color: #000; background: #fff; border: 1px solid #000; padding: 4px 8px; border-radius: 0; }
+  button { cursor: pointer; }
+  button:hover { background: #000; color: #fff; }
+  a { color: #000; }
+  form { display: flex; gap: 8px; flex-wrap: wrap; }
+  #url { flex: 1 1 360px; min-width: 0; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #000; padding: 3px 6px; text-align: left; vertical-align: top; }
+  th { background: #000; color: #fff; font-weight: normal; }
+  tr.sel td { background: #000; color: #fff; }
+  tr.sel a { color: #fff; }
+  tbody tr { cursor: pointer; }
+  .muted { color: #555; }
+  .proof { font-size: 12px; }
+  .proof code { display: block; white-space: pre-wrap; word-break: break-all; border-left: 3px solid #000; padding-left: 6px; margin: 2px 0 6px; }
+  #graphbox { border: 1px solid #000; overflow: auto; max-height: 70vh; }
+  #graph text { font: 11px ui-monospace, Menlo, Consolas, monospace; }
+  #graph g.node { cursor: pointer; }
+  #graph g.node:hover rect { fill: #000; }
+  #graph g.node:hover text { fill: #fff; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  #details { border: 1px solid #000; padding: 8px; margin-top: 8px; }
+  .scroll { overflow-x: auto; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<h1>Kestral SBOM — dependency graph from source</h1>
+<form id="f">
+  <input id="url" placeholder="https://github.com/owner/repo" required>
+  <input id="ref" placeholder="branch or tag (optional)" size="22">
+  <button>Scan</button>
+</form>
+<p id="status" class="muted">Paste a public https git URL. The repo is shallow-cloned and only files it contains are read; every component and edge links to the exact file and line at the scanned commit.</p>
+
+<div id="out" hidden>
+  <h2>Summary</h2>
+  <div id="summary"></div>
+  <div class="row" style="margin-top:8px">
+    <button id="dlCdx" type="button">Download CycloneDX 1.6 JSON</button>
+    <button id="dlRaw" type="button">Download full scan JSON (with proofs)</button>
+    <button id="dlSyft" type="button" hidden>Download raw Syft JSON</button>
+  </div>
+
+  <h2>Dependency graph</h2>
+  <div class="row">
+    <label>Start at <select id="start"></select></label>
+    <label>Depth <select id="depth"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>6</option></select></label>
+    <span class="muted">Click a node to focus it. "+N" = children beyond the chosen depth. Dashed line = edge reported only by Syft (no declaring line).</span>
+  </div>
+  <div id="graphbox"><svg id="graph" xmlns="http://www.w3.org/2000/svg"></svg></div>
+  <div id="details" hidden></div>
+
+  <h2>Components</h2>
+  <div class="row"><input id="filter" placeholder="filter by name / purl / ecosystem / both / syft" size="40"><span id="count" class="muted"></span></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Name</th><th>Version</th><th>Ecosystem</th><th>Scope</th><th>Licenses</th><th>Found by</th><th>Proof</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let data = null, byRef = new Map(), out = new Map(), inc = new Map(), focus = null;
+
+const HOW = { parsed: 'parsed by Kestral', syft: 'reported by Syft — file only, no line', 'syft+text-search': 'reported by Syft; line located by searching the file for name + version' };
+const srcLabel = (s) => (!s || s.includes('kestral') && s.includes('syft')) ? (s ? 'both' : 'kestral') : s[0];
+function proofHtml(p) {
+  const loc = esc(p.file) + (p.line ? ':' + p.line : '') + (p.how ? ` <span class="muted">(${esc(HOW[p.how] || p.how)})</span>` : '') + (p.sources ? ` <span class="muted">[edge from: ${esc(p.sources.join(' + '))}]</span>` : '');
+  const link = p.permalink ? `<a href="${esc(p.permalink)}" target="_blank" rel="noopener">${loc}</a>` : loc;
+  return `<div class="proof">${link}${p.text ? `<code>${esc(p.text)}</code>` : ''}</div>`;
+}
+const label = (c) => c.kind === 'manifest' ? `[${c.name}]` : `${c.name}@${c.version || (c.range ? c.range + ' (unresolved)' : '?')}`;
+
+$('f').onsubmit = async (e) => {
+  e.preventDefault();
+  $('status').textContent = 'Cloning and scanning… (large repos can take a minute)';
+  $('out').hidden = true;
+  try {
+    const r = await fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: $('url').value, ref: $('ref').value }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    load(j);
+  } catch (err) { $('status').textContent = 'Error: ' + err.message; }
+};
+
+function load(j) {
+  data = j;
+  byRef = new Map(j.components.map((c) => [c.ref, c]));
+  out = new Map(); inc = new Map();
+  const repoNode = { ref: j.repo.ref, name: j.repo.name, version: j.repo.commit.slice(0, 12), kind: 'manifest', ecosystem: 'repo', evidence: [], hashes: [], licenses: [], sources: [] };
+  byRef.set(repoNode.ref, repoNode);
+  for (const m of j.manifests) addEdge({ from: j.repo.ref, to: m.root, file: m.file, line: null, permalink: m.permalink, text: null });
+  for (const e of j.edges) addEdge(e);
+
+  const s = j.stats, r = j.repo;
+  $('summary').innerHTML = `
+    <div>Repository: <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a>${r.requestedRef ? ' (ref ' + esc(r.requestedRef) + ')' : ''}</div>
+    <div>Commit: ${r.commitUrl ? `<a href="${esc(r.commitUrl)}" target="_blank" rel="noopener">${esc(r.commit)}</a>` : esc(r.commit)}</div>
+    <div>Scanned: ${esc(j.scannedAt)} · ${j.filesScanned} files walked</div>
+    <div>Components: ${s.components} (line-level proof: ${s.lineProof} · file-level only: ${s.fileProofOnly}) · Edges: ${s.edges} · Unresolved versions: ${s.unresolved} · Without a parent edge: ${s.withoutProvenParent}</div>
+    <div>Syft: ${j.syft.used ? `${esc(j.syft.version)} — ${j.syft.artifacts} packages · ${j.syft.confirmed} also found by Kestral's parsers · ${j.syft.added} added by Syft (${j.syft.addedWithLine} with exact line located) · edges: ${j.syft.edgesConfirmed} confirmed, ${j.syft.edgesAdded} added` : 'not used' + (j.syft.error ? ' — ' + esc(j.syft.error) : '')}</div>
+    <div style="margin-top:6px">Manifests parsed (${j.manifests.length}):</div>
+    ${j.manifests.length ? '<ul style="margin:2px 0">' + j.manifests.map((m) => `<li>${m.permalink ? `<a href="${esc(m.permalink)}" target="_blank" rel="noopener">${esc(m.file)}</a>` : esc(m.file)} <span class="muted">(${esc(m.type)})</span></li>`).join('') + '</ul>' : '<div class="muted">None found — no supported manifest or lock file in this repo.</div>'}
+    ${j.unsupported.length ? `<div>Detected but not parsed (unsupported format): ${j.unsupported.map(esc).join(', ')}</div>` : ''}
+    ${j.errors.length ? `<div>Parse errors: ${j.errors.map((e) => esc(e.file + ': ' + e.error)).join('; ')}</div>` : ''}`;
+
+  $('start').innerHTML = [repoNode, ...j.manifests.map((m) => byRef.get(m.root))].map((c) => `<option value="${esc(c.ref)}">${esc(c.kind === 'manifest' && c.ecosystem !== 'repo' ? c.evidence[0].file : c.name)}</option>`).join('');
+  $('dlSyft').hidden = !j.syftRaw;
+  $('status').textContent = 'Done.';
+  $('out').hidden = false;
+  setFocus(repoNode.ref);
+  renderTable();
+}
+function addEdge(e) {
+  if (!out.has(e.from)) out.set(e.from, []);
+  if (!inc.has(e.to)) inc.set(e.to, []);
+  out.get(e.from).push(e); inc.get(e.to).push(e);
+}
+
+$('start').onchange = () => setFocus($('start').value);
+$('depth').onchange = () => drawGraph();
+
+function setFocus(ref) { focus = ref; drawGraph(); showDetails(ref); renderTable(); }
+
+function drawGraph() {
+  const maxD = Number($('depth').value);
+  const level = new Map([[focus, 0]]);
+  const levels = [[focus]];
+  for (let d = 0; d < maxD; d++) {
+    const next = [];
+    for (const r of levels[d] || []) for (const e of out.get(r) || []) if (!level.has(e.to)) { level.set(e.to, d + 1); next.push(e.to); }
+    if (!next.length) break;
+    next.sort((a, b) => label(byRef.get(a)).localeCompare(label(byRef.get(b))));
+    levels.push(next);
+  }
+  const W = 300, H = 24, PAD = 10, BW = 260;
+  const pos = new Map();
+  levels.forEach((col, x) => col.forEach((r, y) => pos.set(r, [PAD + x * W, PAD + y * H])));
+  const maxRows = Math.max(...levels.map((c) => c.length));
+  const svg = $('graph');
+  svg.setAttribute('width', PAD * 2 + levels.length * W);
+  svg.setAttribute('height', PAD * 2 + maxRows * H);
+  let lines = '', nodes = '';
+  for (const [r, [x, y]] of pos) {
+    for (const e of out.get(r) || []) {
+      const p = pos.get(e.to);
+      if (p && level.get(e.to) === level.get(r) + 1) lines += `<path d="M${x + BW} ${y + 9} C${x + BW + 20} ${y + 9}, ${p[0] - 20} ${p[1] + 9}, ${p[0]} ${p[1] + 9}" fill="none" stroke="#000" stroke-width="0.6"${e.sources && !e.sources.includes('kestral') ? ' stroke-dasharray="4 3"' : ''}/>`;
+    }
+    const c = byRef.get(r);
+    const hidden = level.get(r) === levels.length - 1 ? (out.get(r) || []).length : 0;
+    let t = label(c); if (t.length > 38) t = t.slice(0, 37) + '…';
+    const isF = r === focus;
+    nodes += `<g class="node" data-ref="${esc(r)}"><title>${esc(label(c))}</title><rect x="${x}" y="${y}" width="${BW}" height="18" fill="${isF ? '#000' : '#fff'}" stroke="#000"/><text x="${x + 4}" y="${y + 13}" fill="${isF ? '#fff' : '#000'}">${esc(t)}${hidden ? ' +' + hidden : ''}</text></g>`;
+  }
+  svg.innerHTML = lines + nodes;
+  svg.querySelectorAll('g.node').forEach((g) => (g.onclick = () => setFocus(g.dataset.ref)));
+}
+
+function showDetails(ref) {
+  const c = byRef.get(ref);
+  const deps = out.get(ref) || [], parents = inc.get(ref) || [];
+  const edgeList = (list, key) => list.length ? list.map((e) => `<li><a href="#" data-ref="${esc(e[key])}">${esc(label(byRef.get(e[key])))}</a>${proofHtml(e)}</li>`).join('') : '<li class="muted">none proven</li>';
+  $('details').hidden = false;
+  $('details').innerHTML = `
+    <b>${esc(label(c))}</b>
+    ${c.purl ? `<div>purl: ${esc(c.purl)}</div>` : ''}
+    <div>ecosystem: ${esc(c.ecosystem)} · kind: ${esc(c.kind)}${c.scope && c.kind !== 'manifest' ? ' · scope: ' + esc(c.scope) : ''}</div>
+    ${c.sources.length ? `<div>found by: ${esc(c.sources.join(' + '))}${c.syftFoundBy ? ' (syft cataloger: ' + esc(c.syftFoundBy) + ')' : ''}</div>` : ''}
+    ${(c.licenseEvidence || []).length ? `<div>license evidence (Syft): ${c.licenseEvidence.map((l) => esc(l.license + (l.files.length ? ' in ' + l.files.join(', ') : ''))).join('; ')}</div>` : ''}
+    ${c.licenses.length ? `<div>licenses (as stated in lockfile): ${c.licenses.map(esc).join(', ')}</div>` : ''}
+    ${c.hashes.length ? `<div>hashes: ${c.hashes.map((h) => esc(h.alg + ' ' + h.content)).join('<br>')}</div>` : ''}
+    ${c.evidence.length ? `<div style="margin-top:6px">Found in:</div>${c.evidence.map(proofHtml).join('')}` : ''}
+    <div style="margin-top:6px">Depends on (${deps.length}):</div><ul>${edgeList(deps, 'to')}</ul>
+    <div>Required by (${parents.length}):</div><ul>${edgeList(parents, 'from')}</ul>`;
+  $('details').querySelectorAll('a[data-ref]').forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); setFocus(a.dataset.ref); }));
+}
+
+$('filter').oninput = () => renderTable();
+function renderTable() {
+  if (!data) return;
+  const q = $('filter').value.toLowerCase();
+  const list = data.components.filter((c) => c.kind !== 'manifest' && (!q || (c.name + ' ' + (c.purl || '') + ' ' + c.ecosystem + ' ' + srcLabel(c.sources)).toLowerCase().includes(q)))
+    .sort((a, b) => a.name.localeCompare(b.name) || String(a.version).localeCompare(String(b.version)));
+  $('count').textContent = list.length + ' shown';
+  $('rows').innerHTML = list.slice(0, 3000).map((c) => {
+    const p = c.evidence.find((e) => e.line) || c.evidence[0];
+    const more = c.evidence.length > 1 ? ` <span class="muted">+${c.evidence.length - 1}</span>` : '';
+    const loc = esc(p.file) + (p.line ? ':' + p.line : '');
+    return `<tr data-ref="${esc(c.ref)}"${c.ref === focus ? ' class="sel"' : ''}><td>${esc(c.name)}</td><td>${esc(c.version || (c.range + ' (unresolved)'))}</td><td>${esc(c.ecosystem)}</td><td>${esc(c.scope)}</td><td>${esc(c.licenses.join(', '))}</td><td>${esc(srcLabel(c.sources))}</td><td>${p.line ? '' : '[file only] '}${p.permalink ? `<a href="${esc(p.permalink)}" target="_blank" rel="noopener">${loc}</a>` : loc}${more}</td></tr>`;
+  }).join('') + (list.length > 3000 ? `<tr><td colspan="7" class="muted">${list.length - 3000} more — narrow the filter</td></tr>` : '');
+  $('rows').querySelectorAll('tr[data-ref]').forEach((tr) => (tr.onclick = (ev) => { if (ev.target.tagName !== 'A') { setFocus(tr.dataset.ref); window.scrollTo({ top: $('graphbox').offsetTop - 60 }); } }));
+}
+
+function download(name, obj) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' }));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+const fname = (s) => data.repo.name.replace(/[^\w.-]+/g, '_') + '-' + data.repo.commit.slice(0, 12) + s;
+$('dlCdx').onclick = () => download(fname('.cdx.json'), data.cyclonedx);
+$('dlRaw').onclick = () => { const { cyclonedx, syftRaw, ...rest } = data; download(fname('.scan.json'), rest); };
+$('dlSyft').onclick = () => download(fname('.syft.json'), data.syftRaw);
+</script>
+</body>
+</html>
