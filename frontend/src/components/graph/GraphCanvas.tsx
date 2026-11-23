@@ -21,7 +21,9 @@ interface Props {
   onReady?: (controls: GraphControls | null) => void;
 }
 
-const LAYOUT = { name: "dagre", rankDir: "LR", nodeSep: 45, rankSep: 85, fit: true, padding: 30 };
+// Package labels sit to the right of nodes (see graphStyles), so rows can pack tightly
+// while ranks get enough room for the label text.
+const LAYOUT = { name: "dagre", rankDir: "LR", nodeSep: 10, rankSep: 170, fit: true, padding: 30 };
 
 /** Select a node, fade everything outside its neighborhood, highlight incident edges. */
 function applySelection(cy: Core, selectedId: string | null) {

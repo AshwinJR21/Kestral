@@ -4,6 +4,7 @@ import type { GraphDocument } from "@/types/graph";
 import {
   danglingEdges,
   filterGraph,
+  focusView,
   limitView,
   nodeDisplayLabel,
   searchNodes,
@@ -124,5 +125,31 @@ describe("limitView", () => {
   it("returns the view unchanged when under the limit", () => {
     const full = filterGraph(graph, "all");
     expect(limitView(full, 1000)).toBe(full);
+  });
+});
+
+describe("focusView", () => {
+  const full = () => filterGraph(graph, "all");
+  const ids = (view: ReturnType<typeof filterGraph>) => view.nodes.map((n) => n.data.id).sort();
+
+  it("collapses large graphs to projects and direct dependencies", () => {
+    const view = focusView(full(), new Set(), 3);
+    expect(ids(view)).toEqual(
+      ["app:root", "cmp:1a2b3c", "cmp:3a4b5c", "cmp:6d7e8f", "root:6d7e", "root:py01", "unresolved:f1a5"],
+    );
+    expect(view.hiddenByFocus).toBe(3);
+    assertNoDanglingEdges(view);
+  });
+
+  it("expanding a node reveals its neighbours in both directions", () => {
+    const view = focusView(full(), new Set(["cmp:7a8b9c"]), 3);
+    expect(ids(view)).toEqual(expect.arrayContaining(["cmp:7a8b9c", "cmp:4d5e6f", "cmp:0d1e2f"]));
+    expect(view.hiddenByFocus).toBe(0);
+    assertNoDanglingEdges(view);
+  });
+
+  it("returns the view unchanged when under the threshold", () => {
+    const view = full();
+    expect(focusView(view, new Set())).toBe(view);
   });
 });

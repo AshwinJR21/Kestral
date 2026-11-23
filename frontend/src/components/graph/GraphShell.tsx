@@ -12,7 +12,7 @@ import PackageInspector from "@/components/graph/PackageInspector";
 import type { GraphControls } from "@/components/graph/GraphCanvas";
 import { NODE_KIND_STYLE } from "@/components/graph/graphStyles";
 import { useGraphFilter } from "@/hooks/useGraphFilter";
-import { countByDirectness, countByEcosystem, danglingEdges } from "@/lib/graph";
+import { FOCUS_THRESHOLD, countByDirectness, countByEcosystem, danglingEdges } from "@/lib/graph";
 import type { GraphDocument } from "@/types/graph";
 
 const GraphCanvas = dynamic(() => import("./GraphCanvas"), {
@@ -65,8 +65,14 @@ export default function GraphShell({ graph }: { graph: GraphDocument }) {
   const dangling = useMemo(() => danglingEdges(graph), [graph]);
   const onReady = useCallback((c: GraphControls | null) => setControls(c), []);
 
-  const pick = (id: string) => {
+  // Selecting a node also expands it, so its neighbours appear in the focused view.
+  const select = (id: string | null) => {
     setSelectedId(id);
+    if (id) f.expand(id);
+  };
+
+  const pick = (id: string) => {
+    select(id);
     controls?.focus(id);
   };
 
@@ -115,6 +121,24 @@ export default function GraphShell({ graph }: { graph: GraphDocument }) {
               )}
             </p>
           )}
+          {(view.hiddenByFocus > 0 || (f.showAll && view.totalNodes > FOCUS_THRESHOLD)) && (
+            <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground" role="status">
+              <Info className="size-3.5" aria-hidden />
+              {view.hiddenByFocus > 0
+                ? `Focused view: projects and direct dependencies. ${view.hiddenByFocus} deeper or unconnected nodes are collapsed; click a node to expand its neighbours.`
+                : "All nodes shown."}
+              {view.hiddenByFocus > 0 && (
+                <Button variant="link" size="xs" className="h-auto p-0" onClick={() => f.setShowAll(true)}>
+                  Show all
+                </Button>
+              )}
+              {(f.expandedCount > 0 || f.showAll) && (
+                <Button variant="link" size="xs" className="h-auto p-0" onClick={f.collapseAll}>
+                  Collapse
+                </Button>
+              )}
+            </p>
+          )}
           {selectedHidden && (
             <p className="text-xs text-muted-foreground" role="status">
               The selected node is hidden by the current filters.
@@ -131,7 +155,7 @@ export default function GraphShell({ graph }: { graph: GraphDocument }) {
               nodes={view.nodes}
               edges={view.edges}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={select}
               onReady={onReady}
             />
           )}

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Software Supply Chain Guardian",
+  title: "Kestral",
   description: "Inventory, SBOM and dependency graph explorer for public GitHub repositories.",
 };
 

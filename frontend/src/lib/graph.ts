@@ -7,6 +7,8 @@ export type EcosystemBucket = "npm" | "pypi" | "other";
 
 export const ECOSYSTEM_BUCKETS: readonly EcosystemBucket[] = ["npm", "pypi", "other"];
 export const LARGE_GRAPH_LIMIT = 400;
+/** Above this many nodes the graph opens in a focused (collapsed) view. */
+export const FOCUS_THRESHOLD = 60;
 
 type Node = { data: GraphNodeData };
 type Edge = { data: GraphEdgeData };
@@ -17,6 +19,7 @@ export interface GraphView {
   totalNodes: number;
   hiddenByFilter: number;
   hiddenByLimit: number;
+  hiddenByFocus: number;
 }
 
 /** Label for display: name@version when known, never "@undefined". */
@@ -97,6 +100,36 @@ export function filterGraph(
     totalNodes: graph.nodes.length,
     hiddenByFilter: graph.nodes.length - nodes.length,
     hiddenByLimit: 0,
+    hiddenByFocus: 0,
+  };
+}
+
+/**
+ * Focused default for big graphs: application, projects and their direct dependencies,
+ * plus the immediate neighbours (both directions) of every expanded node.
+ * Collapsed nodes still exist; nothing is removed from the underlying graph.
+ */
+export function focusView(
+  view: GraphView,
+  expanded: ReadonlySet<string>,
+  threshold: number = FOCUS_THRESHOLD,
+): GraphView {
+  if (view.nodes.length <= threshold) return view;
+  const ids = new Set(view.nodes.map((n) => n.data.id));
+  const kept = new Set(
+    view.nodes.filter(({ data }) => isContextNode(data) || data.depth === 1).map((n) => n.data.id),
+  );
+  for (const id of expanded) if (ids.has(id)) kept.add(id);
+  for (const { data } of view.edges) {
+    if (expanded.has(data.source) && ids.has(data.target)) kept.add(data.target);
+    if (expanded.has(data.target) && ids.has(data.source)) kept.add(data.source);
+  }
+  const nodes = view.nodes.filter((n) => kept.has(n.data.id));
+  return {
+    ...view,
+    nodes,
+    edges: edgesBetween(view.edges, kept),
+    hiddenByFocus: view.nodes.length - nodes.length,
   };
 }
 

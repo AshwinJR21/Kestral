@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { FlaskConical, RotateCw, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { FlaskConical, RotateCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,11 +83,9 @@ export default function Home() {
       <header className="border-b bg-background">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div className="flex items-center gap-3">
-            <ShieldCheck className="size-8 text-primary" aria-hidden />
-            <div>
-              <h1 className="text-lg font-semibold leading-tight">Software Supply Chain Guardian</h1>
-              <p className="text-sm text-muted-foreground">Know what you build. Trust what you ship.</p>
-            </div>
+            {/* mix-blend-multiply drops the JPG's white background on tinted surfaces */}
+            <Image src="/kestral-logo.jpg" alt="" width={56} height={56} priority className="mix-blend-multiply" />
+            <h1 className="text-4xl font-bold tracking-tight">Kestral</h1>
           </div>
           {USE_MOCKS && (
             <Badge variant="outline" className="gap-1.5 border-amber-500/60 bg-amber-500/10 px-2.5 py-1 text-amber-800">

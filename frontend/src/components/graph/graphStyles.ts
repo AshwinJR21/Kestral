@@ -53,8 +53,16 @@ export const graphStyles: StylesheetJson = [
     style: { "background-color": NODE_KIND_STYLE.package.color, shape: NODE_KIND_STYLE.package.shape },
   },
   {
+    // Labels beside package/unresolved nodes keep left-to-right columns compact.
+    selector: 'node[type = "package"], node[type = "unresolved"]',
+    style: {
+      width: 16, height: 16, "border-width": 1,
+      "text-valign": "center", "text-halign": "right", "text-margin-x": 5, "text-margin-y": 0,
+    },
+  },
+  {
     selector: 'node[type = "package"][directness = "direct"]',
-    style: { width: 26, height: 26, "border-color": "#134e4a", "border-width": 3 },
+    style: { width: 18, height: 18, "border-color": "#134e4a", "border-width": 2 },
   },
   {
     selector: 'node[type = "package"][directness = "transitive"]',
@@ -73,10 +81,11 @@ export const graphStyles: StylesheetJson = [
   {
     selector: "edge",
     style: {
-      width: 1.5,
+      width: 1,
+      opacity: 0.55,
       "curve-style": "bezier",
       "target-arrow-shape": "triangle",
-      "arrow-scale": 0.9,
+      "arrow-scale": 0.6,
       "line-color": "#94a3b8",
       "target-arrow-color": "#94a3b8",
     },
@@ -87,7 +96,8 @@ export const graphStyles: StylesheetJson = [
       "line-color": "#c7d2fe",
       "target-arrow-color": "#c7d2fe",
       "line-style": "dotted",
-      width: 2,
+      width: 1.5,
+      opacity: 0.4,
       "target-arrow-shape": "tee",
     },
   },
