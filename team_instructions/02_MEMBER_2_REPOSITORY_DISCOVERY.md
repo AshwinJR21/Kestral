@@ -2,7 +2,7 @@
 
 **Branch:** `feature/repository-discovery` · **Review:** Member 1 (M3 signs off the inventory handoff) · **Primary outcome:** a safe, deterministic, evidence-based `Inventory` identifying source languages, dependency declaration files, lockfiles, Docker/CI/IaC artifacts and source folders in a local checkout.
 
-**First action:** read [`README.md`](README.md) (especially the `Inventory` contract) and [`SETUP.md`](SETUP.md). You **do not need a running API, database or Syft** to begin.
+**First action:** read [`README.md`](../README.md) (especially the `Inventory` contract) and [`SETUP.md`](../SETUP.md). You **do not need a running API, database or Syft** to begin.
 
 ## Scope and ownership
 

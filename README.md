@@ -3,7 +3,7 @@
 > **Know What You Build. Trust What You Ship.**  
 > Bosch / Amrita hackathon · implementation blueprint v1.0 · 23 November 2026
 
-**Status:** documentation and implementation specifications only; the repository, services, and example outputs described below still need to be implemented. **Do not interpret an illustrative JSON payload as a successful scan.**
+**Status:** the M1 bootstrap publishes the backend environment, schema v1.0 contracts, OpenAPI scaffold, initial database migration and guarded ingestion utilities. M2-M5 implementations and live scan orchestration are not integrated yet. **Do not interpret an illustrative JSON payload as a successful scan.**
 
 ## Start here
 
@@ -11,11 +11,11 @@ This is the **single authoritative README** for the five-person team. Read this 
 
 | Role | Plan | Branch | Module owned |
 |---|---|---|---|
-| 1 · Platform/ingestion/integration lead | [`01_MEMBER_1_PLATFORM_AND_INGESTION.md`](01_MEMBER_1_PLATFORM_AND_INGESTION.md) | `feature/ingestion` | FastAPI, scan lifecycle, cloning, persistence, integration |
-| 2 · Repository discovery | [`02_MEMBER_2_REPOSITORY_DISCOVERY.md`](02_MEMBER_2_REPOSITORY_DISCOVERY.md) | `feature/repository-discovery` | repo inventory, languages, manifests, CI and IaC |
-| 3 · SBOM/dependency extraction | [`03_MEMBER_3_SBOM_AND_DEPENDENCY_EXTRACTION.md`](03_MEMBER_3_SBOM_AND_DEPENDENCY_EXTRACTION.md) | `feature/sbom-extraction` | Syft, CycloneDX, npm/Python parsers, normalization |
-| 4 · Dependency graph engine | [`04_MEMBER_4_DEPENDENCY_GRAPH_ENGINE.md`](04_MEMBER_4_DEPENDENCY_GRAPH_ENGINE.md) | `feature/graph-engine` | NetworkX, graph metrics and Cytoscape export |
-| 5 · Frontend | [`05_MEMBER_5_FRONTEND_AND_GRAPH_VISUALIZATION.md`](05_MEMBER_5_FRONTEND_AND_GRAPH_VISUALIZATION.md) | `feature/frontend` | Next.js UI, polling, Cytoscape, graph exploration |
+| 1 · Platform/ingestion/integration lead | [`01_MEMBER_1_PLATFORM_AND_INGESTION.md`](team_instructions/01_MEMBER_1_PLATFORM_AND_INGESTION.md) | `feature/ingestion` | FastAPI, scan lifecycle, cloning, persistence, integration |
+| 2 · Repository discovery | [`02_MEMBER_2_REPOSITORY_DISCOVERY.md`](team_instructions/02_MEMBER_2_REPOSITORY_DISCOVERY.md) | `feature/repository-discovery` | repo inventory, languages, manifests, CI and IaC |
+| 3 · SBOM/dependency extraction | [`03_MEMBER_3_SBOM_AND_DEPENDENCY_EXTRACTION.md`](team_instructions/03_MEMBER_3_SBOM_AND_DEPENDENCY_EXTRACTION.md) | `feature/sbom-extraction` | Syft, CycloneDX, npm/Python parsers, normalization |
+| 4 · Dependency graph engine | [`04_MEMBER_4_DEPENDENCY_GRAPH_ENGINE.md`](team_instructions/04_MEMBER_4_DEPENDENCY_GRAPH_ENGINE.md) | `feature/graph-engine` | NetworkX, graph metrics and Cytoscape export |
+| 5 · Frontend | [`05_MEMBER_5_FRONTEND_AND_GRAPH_VISUALIZATION.md`](team_instructions/05_MEMBER_5_FRONTEND_AND_GRAPH_VISUALIZATION.md) | `feature/frontend` | Next.js UI, polling, Cytoscape, graph exploration |
 
 ## Bosch brief: what we are actually building
 
@@ -106,11 +106,12 @@ Not in MVP: Redis, Celery, Kafka, Neo4j, containers for running scanned code, OS
 software-supply-chain-guardian/
 ├── README.md                          # this file; Member 1 owns
 ├── SETUP.md                           # this file; Member 1 owns
-├── 01_MEMBER_1_PLATFORM_AND_INGESTION.md
-├── 02_MEMBER_2_REPOSITORY_DISCOVERY.md
-├── 03_MEMBER_3_SBOM_AND_DEPENDENCY_EXTRACTION.md
-├── 04_MEMBER_4_DEPENDENCY_GRAPH_ENGINE.md
-├── 05_MEMBER_5_FRONTEND_AND_GRAPH_VISUALIZATION.md
+├── team_instructions/
+│   ├── 01_MEMBER_1_PLATFORM_AND_INGESTION.md
+│   ├── 02_MEMBER_2_REPOSITORY_DISCOVERY.md
+│   ├── 03_MEMBER_3_SBOM_AND_DEPENDENCY_EXTRACTION.md
+│   ├── 04_MEMBER_4_DEPENDENCY_GRAPH_ENGINE.md
+│   └── 05_MEMBER_5_FRONTEND_AND_GRAPH_VISUALIZATION.md
 ├── .gitignore                         # Member 1
 ├── .env.example                       # Member 1; examples in SETUP.md
 ├── docker-compose.yml                 # Member 1
@@ -238,7 +239,7 @@ Every path is a repo-relative, `/`-separated string. `file_count` is **visited s
 }
 ```
 
-**Identity:** `component_id` is deterministic from ecosystem + normalized name + **version or unresolved spec** + project-relative installation/lockfile context. **Never key nodes by PURL alone:** two copies of the same package and version in different install locations may need different nodes. No scan ID in the identity hash so later scans can be compared. `root_id` similarly stable for `(ecosystem, project path, manifest path)`; `root_id` is an abstract project declaration, not a fetched package. `licenses`, `hashes` may be empty, `purl`, `version`, `install_path` may be null, `scope` is `runtime|dev|optional|unknown`. A component `resolved=true` means a concrete version/identity is evidenced (e.g., by an exact manifest pin or lock entry), **not** that it is installed, reachable or safe at runtime. Each `evidence` item includes `path`, `kind`, `locator`; for `kind="lockfile"|"manifest"`, path is repo-relative; for `kind="syft-sbom"`, path is scan-artifact-relative (`sbom.cdx.json`). `resolution_status` is `resolved|unresolved|ambiguous`; unresolved/ambiguous relationship sets `to_id:null` and an `unresolved_target:{name,specifier,ecosystem}` object. Do **not** pretend missing Python lock data establishes transitive edges.
+**Identity:** `component_id` is deterministic from ecosystem + normalized name + **version or unresolved spec** + project-relative installation/lockfile context. **Never key nodes by PURL alone:** two copies of the same package and version in different install locations may need different nodes. No scan ID in the identity hash so later scans can be compared. `root_id` similarly stable for `(ecosystem, project path, manifest path)`; `root_id` is an abstract project declaration, not a fetched package. `licenses`, `hashes` may be empty, `purl`, `version`, `install_path` may be null, `scope` is `runtime|dev|optional|unknown`. A license item is `{id:string|null,name:string|null,url:string|null}` with at least `id` or `name`; a hash item is `{alg:string,content:string}`. A component `resolved=true` means a concrete version/identity is evidenced (e.g., by an exact manifest pin or lock entry), **not** that it is installed, reachable or safe at runtime. Each `evidence` item includes `path`, `kind`, `locator`; for `kind="lockfile"|"manifest"`, path is repo-relative; for `kind="syft-sbom"`, path is scan-artifact-relative (`sbom.cdx.json`). `resolution_status` is `resolved|unresolved|ambiguous`; unresolved/ambiguous relationship sets `to_id:null` and an `unresolved_target:{name,specifier,ecosystem}` object. Do **not** pretend missing Python lock data establishes transitive edges.
 
 **Direction:** `from_id` **depends on** `to_id`. A project root points to its declared direct package; a package points to its resolved child package. Root-to-package is declared direct dependency; Graph calculates shortest depth from roots. Syft's component list **does not automatically prove every component-to-component dependency**. If CycloneDX `dependencies` are present, map references only when unambiguous; otherwise use authenticated lockfile relationships and report missing edges.
 
@@ -349,4 +350,4 @@ def build_graph(document: DependencyDocument, app_name: str) -> GraphDocument: .
 - Docker Desktop: https://docs.docker.com/desktop/ ; uv lock conventions: https://docs.astral.sh/uv/concepts/projects/sync/
 - Cytoscape.js: https://js.cytoscape.org/ ; NetworkX: https://networkx.org/documentation/stable/
 
-**Next action:** Follow [`SETUP.md`](SETUP.md) and create the M1 bootstrap PR. The five implementation plans may then proceed in parallel.
+**Next action:** Review and merge the M1 bootstrap PR, then branch each workstream from the updated `main`. Members 2-5 can proceed in parallel using their plans and the committed schema fixtures.
