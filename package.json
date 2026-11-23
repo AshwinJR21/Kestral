@@ -1,0 +1,11 @@
+{
+  "name": "kestral-sbom",
+  "version": "0.1.0",
+  "description": "Scan any public git repository URL and produce a CycloneDX SBOM and dependency graph, with file/line proof for every entry.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "private": true
+}
