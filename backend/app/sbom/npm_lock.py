@@ -25,6 +25,7 @@ from .records import (
     ExtractionResult,
     RootRecord,
     UnsafePathError,
+    license_from_text,
     normalize_rel_path,
     project_path_of,
     read_text_bounded,
@@ -82,7 +83,11 @@ def npm_candidate_locations(parent_location: str, dependency: str) -> list[str]:
         directory = parts[:i]
         if directory and directory[-1] == "node_modules":
             continue
-        if len(directory) >= 2 and directory[-2] == "node_modules" and directory[-1].startswith("@"):
+        if (
+            len(directory) >= 2
+            and directory[-2] == "node_modules"
+            and directory[-1].startswith("@")
+        ):
             continue
         result.append("/".join([*directory, "node_modules", dependency]))
     return list(dict.fromkeys(result))
@@ -137,7 +142,9 @@ def _npm_purl(name: str, version: str | None) -> str | None:
         return None
     namespace, _, short = name.rpartition("/")
     try:
-        return PackageURL(type="npm", namespace=namespace or None, name=short, version=version).to_string()
+        return PackageURL(
+            type="npm", namespace=namespace or None, name=short, version=version
+        ).to_string()
     except ValueError:
         return None
 
@@ -201,8 +208,13 @@ def extract_npm_project(
         ),
         project_path.rsplit("/", 1)[-1] if project_path else "root",
     )
-    root = RootRecord(root_id(ECOSYSTEM, project_path, manifest_path), name, project_path,
-                      manifest_path, ECOSYSTEM)
+    root = RootRecord(
+        root_id(ECOSYSTEM, project_path, manifest_path),
+        name,
+        project_path,
+        manifest_path,
+        ECOSYSTEM,
+    )
     result.roots.append(root)
 
     declarations = _root_declarations(manifest, manifest_path, lock_root, lockfile_path)
@@ -256,7 +268,9 @@ def _root_declarations(
             if dep_name in from_manifest:
                 evidence.append(Evidence(manifest_path, "manifest", f"{section}.{dep_name}"))
             if dep_name in from_lock and lockfile_path:
-                evidence.append(Evidence(lockfile_path, "lockfile", f"packages[''].{section}.{dep_name}"))
+                evidence.append(
+                    Evidence(lockfile_path, "lockfile", f"packages[''].{section}.{dep_name}")
+                )
             spec = from_manifest.get(dep_name, from_lock.get(dep_name))
             declarations.append((dep_name, spec, evidence))
     return declarations
@@ -290,10 +304,20 @@ def _extract_from_lock(
             continue
         declared_name = entry.get("name")
         name = declared_name if is_valid_npm_name(declared_name) else segment_name
-        version = entry.get("version") if isinstance(entry.get("version"), str) and entry["version"] else None
-        licenses = [entry["license"]] if isinstance(entry.get("license"), str) else []
+        version = (
+            entry.get("version")
+            if isinstance(entry.get("version"), str) and entry["version"]
+            else None
+        )
+        licenses = (
+            [license_from_text(entry["license"])]
+            if isinstance(entry.get("license"), str) and entry["license"].strip()
+            else []
+        )
         components[location] = ComponentRecord(
-            component_id=component_id(ECOSYSTEM, name, version, project_path, lockfile_path, location),
+            component_id=component_id(
+                ECOSYSTEM, name, version, project_path, lockfile_path, location
+            ),
             name=name,
             normalized_name=name,
             version=version,
@@ -320,7 +344,9 @@ def _extract_from_lock(
 
     unresolved_count = 0
 
-    def link(from_id: str, parent: str, dep_name: str, spec: object, evidence: list[Evidence]) -> None:
+    def link(
+        from_id: str, parent: str, dep_name: str, spec: object, evidence: list[Evidence]
+    ) -> None:
         nonlocal unresolved_count
         relationship = _resolve_declaration(
             packages, components, local_locations, from_id, parent, dep_name, spec, evidence
@@ -341,7 +367,9 @@ def _extract_from_lock(
             if not isinstance(deps, dict):
                 continue
             for dep_name in sorted(deps):
-                evidence = [Evidence(lockfile_path, "lockfile", f"packages.{location}.{section}.{dep_name}")]
+                evidence = [
+                    Evidence(lockfile_path, "lockfile", f"packages.{location}.{section}.{dep_name}")
+                ]
                 link(component.component_id, location, dep_name, deps[dep_name], evidence)
         peers = entry.get("peerDependencies")
         if isinstance(peers, dict):

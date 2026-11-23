@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.sbom._contract import Inventory
+from app.schemas.inventory import Inventory
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SCAN_ID = "scan_550e8400e29b41d4a716446655440000"
@@ -34,8 +34,21 @@ def make_inventory(repo: Path, scan_id: str = SCAN_ID, partial: bool = False) ->
         elif name in _LOCKS:
             lockfiles.append({"path": rel, "kind": name, "ecosystem": _LOCKS[name]})
     return Inventory.model_validate(
-        {"schema_version": "1.0", "scan_id": scan_id, "manifests": manifests,
-         "lockfiles": lockfiles, "partial": partial}
+        {
+            "schema_version": "1.0",
+            "scan_id": scan_id,
+            "languages": [],
+            "manifests": manifests,
+            "lockfiles": lockfiles,
+            "dockerfiles": [],
+            "ci_files": [],
+            "iac_files": [],
+            "existing_sboms": [],
+            "source_directories": [],
+            "file_count": len(manifests) + len(lockfiles),
+            "partial": partial,
+            "warnings": [],
+        }
     )
 
 

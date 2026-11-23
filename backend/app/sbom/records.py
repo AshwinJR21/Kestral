@@ -8,6 +8,7 @@ whether M1's models are frozen.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -17,6 +18,16 @@ MAX_MANIFEST_BYTES = 2 * 1024 * 1024  # package.json, requirements, pyproject
 MAX_LOCKFILE_BYTES = 25 * 1024 * 1024  # package-lock, poetry.lock, uv.lock
 
 SCOPES = ("runtime", "dev", "optional", "unknown")
+
+License = tuple[str | None, str | None]  # (spdx_id, name); one of them is set
+
+_SPDX_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.+-]*$")
+
+
+def license_from_text(value: str) -> License:
+    """Classify a free-text license field: a bare SPDX-like token is an id."""
+    value = value.strip()
+    return (value, None) if _SPDX_ID_RE.match(value) else (None, value)
 
 
 class UnsafePathError(ValueError):
@@ -55,7 +66,7 @@ class ComponentRecord:
     scope: str
     evidence: list[Evidence]
     resolved: bool
-    licenses: list[str] = field(default_factory=list)
+    licenses: list[License] = field(default_factory=list)  # (spdx_id, name)
     hashes: list[tuple[str, str]] = field(default_factory=list)  # (alg, content)
     # Internal: the lockfile/manifest that evidences this instance (not exported).
     context_path: str | None = None
@@ -64,10 +75,14 @@ class ComponentRecord:
         if item not in self.evidence:
             self.evidence.append(item)
 
-    def add_licenses(self, values: tuple[str, ...] | list[str]) -> None:
-        for value in values:
-            if value not in self.licenses:
-                self.licenses.append(value)
+    def add_licenses(self, values: tuple[License, ...] | list[License]) -> None:
+        # "MIT" as an SPDX id (Syft) and "MIT" as free text (lockfile) are one license.
+        known = {(spdx_id or name) for spdx_id, name in self.licenses}
+        for spdx_id, name in values:
+            key = spdx_id or name
+            if key and key not in known:
+                self.licenses.append((spdx_id, name))
+                known.add(key)
 
     def add_hashes(self, values: tuple[tuple[str, str], ...] | list[tuple[str, str]]) -> None:
         for value in values:

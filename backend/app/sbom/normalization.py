@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from packaging.utils import canonicalize_name
 
-from ._contract import DependencyDocument
+from app.schemas.dependency import DependencyDocument
+
 from .cyclonedx_parser import ParsedSbom, SbomComponent
 from .identities import syft_only_component_id
 from .records import (
@@ -63,7 +64,10 @@ def reconcile_with_sbom(result: ExtractionResult, sbom: ParsedSbom) -> None:
         evidence = Evidence(SBOM_FILENAME, SYFT_KIND, sbom_component.evidence_locator)
         is_unique_ref = sbom_component.bom_ref in unique_refs
 
-        if any((loc, f"{ecosystem}:{sbom_component.normalized_name}") in root_files for loc in locations):
+        if any(
+            (loc, f"{ecosystem}:{sbom_component.normalized_name}") in root_files
+            for loc in locations
+        ):
             if is_unique_ref:
                 ref_map[sbom_component.bom_ref] = (_ROOT, [])
             continue  # Syft lists the project itself; it is a root, not a dependency
@@ -85,11 +89,18 @@ def reconcile_with_sbom(result: ExtractionResult, sbom: ParsedSbom) -> None:
                     only.purl = sbom_component.purl
             if is_unique_ref:
                 ref_map[sbom_component.bom_ref] = (
-                    "lock" if len(candidates) == 1 else _AMBIGUOUS, candidates)
+                    "lock" if len(candidates) == 1 else _AMBIGUOUS,
+                    candidates,
+                )
             continue
 
-        cid = syft_only_component_id(ecosystem, sbom_component.normalized_name,
-                                     sbom_component.version, sbom_component.purl, locations)
+        cid = syft_only_component_id(
+            ecosystem,
+            sbom_component.normalized_name,
+            sbom_component.version,
+            sbom_component.purl,
+            locations,
+        )
         component = syft_only.get(cid)
         if component is None:
             component = ComponentRecord(
@@ -119,13 +130,21 @@ def reconcile_with_sbom(result: ExtractionResult, sbom: ParsedSbom) -> None:
     _syft_edges(result, sbom, ref_map)
 
     if syft_only:
-        result.warn(f"Syft reported {len(syft_only)} packages with no lockfile/manifest evidence; "
-                    "kept as Syft-only components with unknown directness")
-    missing = [c for c in result.components
-               if c.context_path is not None and c.component_id not in matched_ids]
+        result.warn(
+            f"Syft reported {len(syft_only)} packages with no lockfile/manifest evidence; "
+            "kept as Syft-only components with unknown directness"
+        )
+    missing = [
+        c
+        for c in result.components
+        if c.context_path is not None and c.component_id not in matched_ids
+    ]
     if missing:
-        result.warn(f"SBOM coverage discrepancy: {len(missing)} lockfile/manifest components were "
-                    "not reported by Syft (kept, with their own evidence)", partial=False)
+        result.warn(
+            f"SBOM coverage discrepancy: {len(missing)} lockfile/manifest components were "
+            "not reported by Syft (kept, with their own evidence)",
+            partial=False,
+        )
 
 
 def _project_files(result: ExtractionResult, project_path: str, manifest_path: str) -> set[str]:
@@ -138,8 +157,11 @@ def _project_files(result: ExtractionResult, project_path: str, manifest_path: s
     return files
 
 
-def _syft_edges(result: ExtractionResult, sbom: ParsedSbom,
-                ref_map: dict[str, tuple[str, list[ComponentRecord]]]) -> None:
+def _syft_edges(
+    result: ExtractionResult,
+    sbom: ParsedSbom,
+    ref_map: dict[str, tuple[str, list[ComponentRecord]]],
+) -> None:
     ignored = 0
     for dependency in sbom.dependencies:
         source = ref_map.get(dependency.ref)
@@ -154,18 +176,36 @@ def _syft_edges(result: ExtractionResult, sbom: ParsedSbom,
             target = ref_map.get(target_ref)
             if target is None or target[0] == _ROOT:
                 continue
-            evidence = [Evidence(SBOM_FILENAME, SYFT_KIND,
-                                 f"dependencies[{dependency.index}].dependsOn[{position}]")]
+            evidence = [
+                Evidence(
+                    SBOM_FILENAME,
+                    SYFT_KIND,
+                    f"dependencies[{dependency.index}].dependsOn[{position}]",
+                )
+            ]
             target_kind, targets = target
             if target_kind == _AMBIGUOUS:
                 sample = targets[0]
-                result.relationships.append(unresolved_edge(
-                    from_id, sample.name, sample.version or "", sample.ecosystem, evidence, "ambiguous"))
+                result.relationships.append(
+                    unresolved_edge(
+                        from_id,
+                        sample.name,
+                        sample.version or "",
+                        sample.ecosystem,
+                        evidence,
+                        "ambiguous",
+                    )
+                )
             else:
-                result.relationships.append(resolved_edge(from_id, targets[0].component_id, evidence))
+                result.relationships.append(
+                    resolved_edge(from_id, targets[0].component_id, evidence)
+                )
     if ignored:
-        result.warn(f"{ignored} Syft dependency references were not used because lockfile "
-                    "relationships are authoritative for those packages", partial=False)
+        result.warn(
+            f"{ignored} Syft dependency references were not used because lockfile "
+            "relationships are authoritative for those packages",
+            partial=False,
+        )
 
 
 # --------------------------------------------------------------------------
@@ -173,7 +213,9 @@ def _syft_edges(result: ExtractionResult, sbom: ParsedSbom,
 # --------------------------------------------------------------------------
 
 
-def _merge_relationships(relationships: list[RelationshipRecord]) -> list[tuple[str, RelationshipRecord]]:
+def _merge_relationships(
+    relationships: list[RelationshipRecord],
+) -> list[tuple[str, RelationshipRecord]]:
     unique: dict[str, RelationshipRecord] = {}
     for relationship in relationships:
         relationship.evidence = sorted(set(relationship.evidence))
@@ -202,16 +244,26 @@ def finalize(result: ExtractionResult, scan_id: str) -> DependencyDocument:
         "schema_version": "1.0",
         "scan_id": scan_id,
         "roots": [
-            {"root_id": r.root_id, "name": r.name, "path": r.path,
-             "manifest_path": r.manifest_path, "ecosystem": r.ecosystem}
+            {
+                "root_id": r.root_id,
+                "name": r.name,
+                "path": r.path,
+                "manifest_path": r.manifest_path,
+                "ecosystem": r.ecosystem,
+            }
             for _, r in sorted(roots.items())
         ],
         "components": [
             {
-                "component_id": c.component_id, "name": c.name, "version": c.version,
-                "ecosystem": c.ecosystem, "purl": c.purl, "install_path": c.install_path,
-                "project_path": c.project_path, "scope": c.scope,
-                "licenses": list(c.licenses),
+                "component_id": c.component_id,
+                "name": c.name,
+                "version": c.version,
+                "ecosystem": c.ecosystem,
+                "purl": c.purl,
+                "install_path": c.install_path,
+                "project_path": c.project_path,
+                "scope": c.scope,
+                "licenses": [{"id": spdx_id, "name": name} for spdx_id, name in c.licenses],
                 "hashes": [{"alg": alg, "content": content} for alg, content in c.hashes],
                 "evidence": [e.as_dict() for e in sorted(set(c.evidence))],
                 "resolved": c.resolved,
@@ -220,9 +272,12 @@ def finalize(result: ExtractionResult, scan_id: str) -> DependencyDocument:
         ],
         "relationships": [
             {
-                "relationship_id": rid, "from_id": r.from_id, "to_id": r.to_id,
+                "relationship_id": rid,
+                "from_id": r.from_id,
+                "to_id": r.to_id,
                 "unresolved_target": r.unresolved_target,
-                "resolution_status": r.resolution_status, "type": "DEPENDS_ON",
+                "resolution_status": r.resolution_status,
+                "type": "DEPENDS_ON",
                 "evidence": [e.as_dict() for e in r.evidence],
             }
             for rid, r in relationships
@@ -258,11 +313,17 @@ def check_integrity(document: dict) -> None:
         if rel["from_id"] not in known_sources:
             raise DocumentIntegrityError(f"{rid}: from_id is not a root or component")
         if rel["resolution_status"] == "resolved":
-            if rel["to_id"] is None or rel["to_id"] not in component_ids or rel["unresolved_target"]:
+            if (
+                rel["to_id"] is None
+                or rel["to_id"] not in component_ids
+                or rel["unresolved_target"]
+            ):
                 raise DocumentIntegrityError(f"{rid}: resolved edge must target a known component")
         else:
             if rel["to_id"] is not None or not rel["unresolved_target"]:
-                raise DocumentIntegrityError(f"{rid}: unresolved edge needs to_id=null and a target")
+                raise DocumentIntegrityError(
+                    f"{rid}: unresolved edge needs to_id=null and a target"
+                )
         if not rel["evidence"]:
             raise DocumentIntegrityError(f"{rid}: relationship has no evidence")
     for identity in [*root_ids, *component_ids, *relationship_ids]:

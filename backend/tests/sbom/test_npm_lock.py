@@ -28,15 +28,24 @@ def doc_for(repo, manifest="package.json", lock="package-lock.json"):
         ("node_modules/a", ["node_modules/a/node_modules/x", "node_modules/x"]),
         (
             "node_modules/a/node_modules/b",
-            ["node_modules/a/node_modules/b/node_modules/x", "node_modules/a/node_modules/x",
-             "node_modules/x"],
+            [
+                "node_modules/a/node_modules/b/node_modules/x",
+                "node_modules/a/node_modules/x",
+                "node_modules/x",
+            ],
         ),
         (
             "node_modules/@s/a/node_modules/b",
-            ["node_modules/@s/a/node_modules/b/node_modules/x", "node_modules/@s/a/node_modules/x",
-             "node_modules/x"],
+            [
+                "node_modules/@s/a/node_modules/b/node_modules/x",
+                "node_modules/@s/a/node_modules/x",
+                "node_modules/x",
+            ],
         ),
-        ("packages/lib", ["packages/lib/node_modules/x", "packages/node_modules/x", "node_modules/x"]),
+        (
+            "packages/lib",
+            ["packages/lib/node_modules/x", "packages/node_modules/x", "node_modules/x"],
+        ),
     ],
 )
 def test_candidate_order_is_nearest_first(parent, expected):
@@ -72,11 +81,17 @@ def test_name_from_location(location, name):
 
 
 def test_lockfile_pairing_is_same_directory_only():
-    locks = ["package-lock.json", "web/package-lock.json", "api/npm-shrinkwrap.json",
-             "api/package-lock.json"]
+    locks = [
+        "package-lock.json",
+        "web/package-lock.json",
+        "api/npm-shrinkwrap.json",
+        "api/package-lock.json",
+    ]
     assert find_lockfile("package.json", locks) == "package-lock.json"
     assert find_lockfile("web/package.json", locks) == "web/package-lock.json"
-    assert find_lockfile("api/package.json", locks) == "api/npm-shrinkwrap.json"  # npm prefers shrinkwrap
+    assert (
+        find_lockfile("api/package.json", locks) == "api/npm-shrinkwrap.json"
+    )  # npm prefers shrinkwrap
     assert find_lockfile("web/sub/package.json", locks) is None  # never borrow a parent lock
 
 
@@ -86,7 +101,11 @@ SIMPLE_EDGES = {
     ("ROOT:package.json", "alpha@1.0.0[node_modules/alpha]", "resolved"),
     ("ROOT:package.json", "devtool@0.5.1[node_modules/devtool]", "resolved"),
     ("alpha@1.0.0[node_modules/alpha]", "beta@2.0.0[node_modules/beta]", "resolved"),
-    ("alpha@1.0.0[node_modules/alpha]", "nested@3.0.0[node_modules/alpha/node_modules/nested]", "resolved"),
+    (
+        "alpha@1.0.0[node_modules/alpha]",
+        "nested@3.0.0[node_modules/alpha/node_modules/nested]",
+        "resolved",
+    ),
 }
 
 
@@ -106,7 +125,9 @@ def test_component_fields_from_lockfile():
     assert alpha.purl == "pkg:npm/alpha@1.0.0"
     assert alpha.install_path == "node_modules/alpha"
     assert alpha.scope == "runtime"
-    assert alpha.licenses == ["MIT"]
+    assert [lic.model_dump() for lic in alpha.licenses] == [
+        {"id": "MIT", "name": None, "url": None}
+    ]
     assert alpha.hashes[0].alg == "SHA-512" and len(alpha.hashes[0].content) == 128
     assert [e.model_dump() for e in alpha.evidence] == [
         {"path": "package-lock.json", "kind": "lockfile", "locator": "packages.node_modules/alpha"}
@@ -117,8 +138,11 @@ def test_component_fields_from_lockfile():
 def test_edges_carry_manifest_and_lock_evidence():
     document = doc_for(FIXTURES / "npm_v3_simple")
     names = labels(document)
-    root_edge = next(r for r in document.relationships
-                     if names[r.to_id].startswith("alpha") and r.from_id.startswith("root:"))
+    root_edge = next(
+        r
+        for r in document.relationships
+        if names[r.to_id].startswith("alpha") and r.from_id.startswith("root:")
+    )
     assert {(e.path, e.locator) for e in root_edge.evidence} == {
         ("package.json", "dependencies.alpha"),
         ("package-lock.json", "packages[''].dependencies.alpha"),
@@ -142,10 +166,17 @@ def test_duplicate_installs_get_distinct_ids_and_correct_parents():
         ("c@1.0.0[node_modules/c]", "shared@1.0.0[node_modules/shared]", "resolved"),
         # nested copy wins over the hoisted one
         ("b@1.0.0[node_modules/b]", "shared@2.0.0[node_modules/b/node_modules/shared]", "resolved"),
-        ("b@1.0.0[node_modules/b]", "@scope/util@1.2.0[node_modules/b/node_modules/@scope/util]", "resolved"),
+        (
+            "b@1.0.0[node_modules/b]",
+            "@scope/util@1.2.0[node_modules/b/node_modules/@scope/util]",
+            "resolved",
+        ),
         # scoped nested package walks up to its parent's node_modules first
-        ("@scope/util@1.2.0[node_modules/b/node_modules/@scope/util]",
-         "shared@2.0.0[node_modules/b/node_modules/shared]", "resolved"),
+        (
+            "@scope/util@1.2.0[node_modules/b/node_modules/@scope/util]",
+            "shared@2.0.0[node_modules/b/node_modules/shared]",
+            "resolved",
+        ),
     }
 
 
@@ -159,10 +190,17 @@ def test_ambiguity_alias_missing_workspace_and_peers():
         ("ROOT:package.json", "?fsevents", "unresolved"),  # optional, not installed
     }
     assert document.partial is True
-    ghost = next(r for r in document.relationships
-                 if r.unresolved_target and r.unresolved_target.name == "ghost")
+    ghost = next(
+        r
+        for r in document.relationships
+        if r.unresolved_target and r.unresolved_target.name == "ghost"
+    )
     assert ghost.to_id is None
-    assert ghost.unresolved_target.model_dump() == {"name": "ghost", "specifier": "^9.0.0", "ecosystem": "npm"}
+    assert ghost.unresolved_target.model_dump() == {
+        "name": "ghost",
+        "specifier": "^9.0.0",
+        "ecosystem": "npm",
+    }
     assert any("workspace/link" in w for w in document.warnings)
     assert any("peerDependencies" in w for w in document.warnings)
     # no component invented for anything unresolved
@@ -186,7 +224,9 @@ def test_missing_lockfile_keeps_declarations_unresolved(tmp_path):
     ],
 )
 def test_unsupported_or_malformed_lock_is_partial_not_guessed(tmp_path, lock):
-    (tmp_path / "package.json").write_text(json.dumps({"name": "x", "dependencies": {"a": "1.0.0"}}))
+    (tmp_path / "package.json").write_text(
+        json.dumps({"name": "x", "dependencies": {"a": "1.0.0"}})
+    )
     (tmp_path / "package-lock.json").write_text(json.dumps(lock))
     document = doc_for(tmp_path)
     assert document.components == []
@@ -213,9 +253,14 @@ def test_oversized_lock_is_rejected(tmp_path, monkeypatch):
 
 def test_unsafe_lock_keys_are_skipped(tmp_path):
     (tmp_path / "package.json").write_text(json.dumps({"name": "x"}))
-    lock = {"lockfileVersion": 3, "packages": {
-        "": {}, "../outside/node_modules/a": {"version": "1.0.0"},
-        "node_modules/ok": {"version": "1.0.0"}}}
+    lock = {
+        "lockfileVersion": 3,
+        "packages": {
+            "": {},
+            "../outside/node_modules/a": {"version": "1.0.0"},
+            "node_modules/ok": {"version": "1.0.0"},
+        },
+    }
     (tmp_path / "package-lock.json").write_text(json.dumps(lock))
     document = doc_for(tmp_path)
     assert [c.install_path for c in document.components] == ["node_modules/ok"]
@@ -226,8 +271,17 @@ def test_monorepo_subproject_paths_are_lockfile_relative(tmp_path):
     web = tmp_path / "web"
     web.mkdir()
     (web / "package.json").write_text(json.dumps({"name": "web", "dependencies": {"a": "1.0.0"}}))
-    (web / "package-lock.json").write_text(json.dumps({"lockfileVersion": 3, "packages": {
-        "": {"dependencies": {"a": "1.0.0"}}, "node_modules/a": {"version": "1.0.0"}}}))
+    (web / "package-lock.json").write_text(
+        json.dumps(
+            {
+                "lockfileVersion": 3,
+                "packages": {
+                    "": {"dependencies": {"a": "1.0.0"}},
+                    "node_modules/a": {"version": "1.0.0"},
+                },
+            }
+        )
+    )
     document = doc_for(tmp_path, "web/package.json", "web/package-lock.json")
     (root,) = document.roots
     (component,) = document.components
@@ -238,7 +292,13 @@ def test_monorepo_subproject_paths_are_lockfile_relative(tmp_path):
 
 def test_entry_without_version_is_unresolved_component_without_purl(tmp_path):
     (tmp_path / "package.json").write_text(json.dumps({"name": "x", "dependencies": {"a": "*"}}))
-    (tmp_path / "package-lock.json").write_text(json.dumps({"lockfileVersion": 3, "packages": {
-        "": {"dependencies": {"a": "*"}}, "node_modules/a": {}}}))
+    (tmp_path / "package-lock.json").write_text(
+        json.dumps(
+            {
+                "lockfileVersion": 3,
+                "packages": {"": {"dependencies": {"a": "*"}}, "node_modules/a": {}},
+            }
+        )
+    )
     (component,) = doc_for(tmp_path).components
     assert component.version is None and component.purl is None and component.resolved is False

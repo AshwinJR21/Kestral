@@ -152,7 +152,11 @@ def test_real_syft_on_tiny_npm_fixture(tmp_path):
                 "lockfileVersion": 3,
                 "requires": True,
                 "packages": {
-                    "": {"name": "demo-app", "version": "1.0.0", "dependencies": {"alpha": "1.0.0"}},
+                    "": {
+                        "name": "demo-app",
+                        "version": "1.0.0",
+                        "dependencies": {"alpha": "1.0.0"},
+                    },
                     "node_modules/alpha": {
                         "version": "1.0.0",
                         "resolved": "https://registry.npmjs.org/alpha/-/alpha-1.0.0.tgz",

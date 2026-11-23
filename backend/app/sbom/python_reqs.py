@@ -32,9 +32,20 @@ MAX_INCLUDED_FILES = 20
 
 # Options whose *values* may carry URLs/credentials: report only the option name.
 _INSTALL_OPTIONS = (
-    "-i", "--index-url", "--extra-index-url", "--trusted-host", "-f", "--find-links",
-    "--no-index", "--prefer-binary", "--only-binary", "--no-binary", "--pre",
-    "--require-hashes", "--use-feature", "--no-deps",
+    "-i",
+    "--index-url",
+    "--extra-index-url",
+    "--trusted-host",
+    "-f",
+    "--find-links",
+    "--no-index",
+    "--prefer-binary",
+    "--only-binary",
+    "--no-binary",
+    "--pre",
+    "--require-hashes",
+    "--use-feature",
+    "--no-deps",
 )
 _PER_REQUIREMENT_OPTION = re.compile(r"\s--?[A-Za-z]")
 _NAME_PREFIX = re.compile(r"^\s*[A-Za-z0-9][A-Za-z0-9._-]*\s*(\[[^\]]*\])?\s*")
@@ -133,8 +144,9 @@ def parse_requirements(repo_dir: Path, rel_path: str) -> ParsedManifest:
     parsed = ParsedManifest()
     rel_path = normalize_rel_path(rel_path)
     state = {"files": 0}
-    _parse_requirements_file(repo_dir, rel_path, requirements_scope(rel_path), parsed,
-                             chain=(), state=state)
+    _parse_requirements_file(
+        repo_dir, rel_path, requirements_scope(rel_path), parsed, chain=(), state=state
+    )
     return parsed
 
 
@@ -199,7 +211,7 @@ def _parse_requirements_file(
 def _include_target(line: str) -> str | None:
     for prefix in ("--requirement=", "--requirement ", "-r "):
         if line.startswith(prefix):
-            return line[len(prefix):].strip()
+            return line[len(prefix) :].strip()
     if line.startswith("-r") and len(line) > 2 and not line.startswith("-r-"):
         return line[2:].strip()
     return None
@@ -234,7 +246,9 @@ def _follow_include(
         rel = normalize_rel_path(joined)
         safe_repo_file(repo_dir, rel)
     except UnsafePathError:
-        parsed.warn(f"{including}: include '-r {target}' escapes the repository or is missing; rejected")
+        parsed.warn(
+            f"{including}: include '-r {target}' escapes the repository or is missing; rejected"
+        )
         return
     if rel in chain:
         parsed.warn(f"{including}: include cycle via '{rel}' stopped", partial=False)
@@ -254,7 +268,9 @@ def parse_pyproject(repo_dir: Path, rel_path: str) -> ParsedManifest:
     parsed = ParsedManifest()
     rel_path = normalize_rel_path(rel_path)
     try:
-        data = tomllib.loads(read_text_bounded(safe_repo_file(repo_dir, rel_path), MAX_MANIFEST_BYTES))
+        data = tomllib.loads(
+            read_text_bounded(safe_repo_file(repo_dir, rel_path), MAX_MANIFEST_BYTES)
+        )
     except (OSError, ValueError, UnsafePathError):  # TOMLDecodeError is a ValueError
         parsed.warn(f"{rel_path}: could not be parsed safely as TOML; declarations ignored")
         return parsed
@@ -262,15 +278,20 @@ def parse_pyproject(repo_dir: Path, rel_path: str) -> ParsedManifest:
     project = data.get("project") if isinstance(data.get("project"), dict) else None
     tool = data.get("tool") if isinstance(data.get("tool"), dict) else {}
     poetry = tool.get("poetry") if isinstance(tool.get("poetry"), dict) else None
-    groups = data.get("dependency-groups") if isinstance(data.get("dependency-groups"), dict) else None
+    groups = (
+        data.get("dependency-groups") if isinstance(data.get("dependency-groups"), dict) else None
+    )
     uv = tool.get("uv") if isinstance(tool.get("uv"), dict) else None
 
     if project is None and poetry is None and groups is None:
         parsed.is_dependency_manifest = False  # tool-only pyproject (ruff, black, ...)
         return parsed
 
-    backend = data.get("build-system", {}).get("build-backend", "") if isinstance(
-        data.get("build-system"), dict) else ""
+    backend = (
+        data.get("build-system", {}).get("build-backend", "")
+        if isinstance(data.get("build-system"), dict)
+        else ""
+    )
     uses_poetry = poetry is not None or str(backend).startswith("poetry")
     if uses_poetry and uv is None:
         parsed.manager = "poetry"
@@ -281,17 +302,22 @@ def parse_pyproject(repo_dir: Path, rel_path: str) -> ParsedManifest:
         parsed.name = project.get("name") if isinstance(project.get("name"), str) else None
         _parse_pep621(project, rel_path, parsed)
     if poetry is not None:
-        parsed.name = parsed.name or (poetry.get("name") if isinstance(poetry.get("name"), str) else None)
+        parsed.name = parsed.name or (
+            poetry.get("name") if isinstance(poetry.get("name"), str) else None
+        )
         _parse_poetry_tables(poetry, rel_path, parsed)
     if groups is not None:
         _parse_dependency_groups(groups, rel_path, parsed)
     if uv is not None and isinstance(uv.get("dev-dependencies"), list):
-        _parse_pep508_list(uv["dev-dependencies"], "dev", rel_path, "tool.uv.dev-dependencies", parsed)
+        _parse_pep508_list(
+            uv["dev-dependencies"], "dev", rel_path, "tool.uv.dev-dependencies", parsed
+        )
     return parsed
 
 
-def _parse_pep508_list(items: object, scope: str, rel_path: str, prefix: str,
-                       parsed: ParsedManifest) -> None:
+def _parse_pep508_list(
+    items: object, scope: str, rel_path: str, prefix: str, parsed: ParsedManifest
+) -> None:
     if not isinstance(items, list):
         parsed.warn(f"{rel_path}: '{prefix}' is not a list; ignored")
         return
@@ -300,7 +326,9 @@ def _parse_pep508_list(items: object, scope: str, rel_path: str, prefix: str,
         if isinstance(item, dict) and "include-group" in item:
             continue  # PEP 735 group include: its members are parsed under that group
         declaration = (
-            declaration_from_pep508(item, scope, rel_path, locator) if isinstance(item, str) else None
+            declaration_from_pep508(item, scope, rel_path, locator)
+            if isinstance(item, str)
+            else None
         )
         if declaration is None:
             parsed.warn(f"{rel_path}: {locator} is not a valid PEP 508 requirement; ignored")
@@ -314,12 +342,19 @@ def _parse_pep621(project: dict, rel_path: str, parsed: ParsedManifest) -> None:
         if key in dynamic:
             parsed.warn(f"{rel_path}: project.{key} is dynamic and cannot be read statically")
     if "dependencies" in project:
-        _parse_pep508_list(project["dependencies"], "runtime", rel_path, "project.dependencies", parsed)
+        _parse_pep508_list(
+            project["dependencies"], "runtime", rel_path, "project.dependencies", parsed
+        )
     optional = project.get("optional-dependencies")
     if isinstance(optional, dict):
         for extra in sorted(optional):
-            _parse_pep508_list(optional[extra], "optional", rel_path,
-                               f"project.optional-dependencies.{extra}", parsed)
+            _parse_pep508_list(
+                optional[extra],
+                "optional",
+                rel_path,
+                f"project.optional-dependencies.{extra}",
+                parsed,
+            )
 
 
 def _parse_dependency_groups(groups: dict, rel_path: str, parsed: ParsedManifest) -> None:
@@ -338,8 +373,13 @@ def _parse_poetry_tables(poetry: dict, rel_path: str, parsed: ParsedManifest) ->
         for group in sorted(poetry_groups):
             body = poetry_groups[group]
             deps = body.get("dependencies") if isinstance(body, dict) else None
-            tables.append((f"tool.poetry.group.{group}.dependencies", deps,
-                           "dev" if group == "dev" else "unknown"))
+            tables.append(
+                (
+                    f"tool.poetry.group.{group}.dependencies",
+                    deps,
+                    "dev" if group == "dev" else "unknown",
+                )
+            )
     for prefix, table, scope in tables:
         if table is None:
             continue
@@ -349,15 +389,18 @@ def _parse_poetry_tables(poetry: dict, rel_path: str, parsed: ParsedManifest) ->
         for name in sorted(table):
             if name.lower() == "python":
                 continue  # interpreter constraint, not a package
-            declaration = _poetry_declaration(name, table[name], scope, rel_path, f"{prefix}.{name}")
+            declaration = _poetry_declaration(
+                name, table[name], scope, rel_path, f"{prefix}.{name}"
+            )
             if declaration is None:
                 parsed.warn(f"{rel_path}: {prefix}.{name} has an unsupported form; ignored")
                 continue
             parsed.declarations.append(declaration)
 
 
-def _poetry_declaration(name: str, value: object, scope: str, rel_path: str,
-                        locator: str) -> PyDeclaration | None:
+def _poetry_declaration(
+    name: str, value: object, scope: str, rel_path: str, locator: str
+) -> PyDeclaration | None:
     if not re.match(r"^[A-Za-z0-9][A-Za-z0-9._-]*$", name):
         return None
     spec: str

@@ -39,7 +39,10 @@ def test_poetry_scopes_and_evidence():
     assert by_name[("requests", "2.31.0")].scope == "runtime"
     assert by_name[("pytest", "8.3.2")].scope == "dev"
     assert by_name[("requests", "2.31.0")].evidence[0].model_dump() == {
-        "path": "poetry.lock", "kind": "lockfile", "locator": "package[requests==2.31.0]"}
+        "path": "poetry.lock",
+        "kind": "lockfile",
+        "locator": "package[requests==2.31.0]",
+    }
     assert len([c for c in document.components if c.name == "typing-extensions"]) == 2
 
 
@@ -61,7 +64,11 @@ def test_uv_edges_and_root_package_not_a_component():
     assert "uv-demo" not in {c.name for c in document.components}
     scopes = {c.name: c.scope for c in document.components}
     assert (scopes["httpx"], scopes["rich"], scopes["pytest"], scopes["h11"]) == (
-        "runtime", "optional", "dev", "unknown")
+        "runtime",
+        "optional",
+        "dev",
+        "unknown",
+    )
     certifi = next(c for c in document.components if c.name == "certifi")
     assert certifi.hashes[0].alg == "SHA-256"
 
@@ -76,7 +83,7 @@ def test_uv_marker_is_kept_on_evidence():
 def test_uv_versioned_reference_disambiguates(tmp_path):
     (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\ndependencies = ["a"]\n')
     (tmp_path / "uv.lock").write_text(
-        'version = 1\n'
+        "version = 1\n"
         '[[package]]\nname = "x"\nversion = "0"\nsource = { editable = "." }\n'
         'dependencies = [{ name = "a", version = "2.0" }]\n'
         '[[package]]\nname = "a"\nversion = "1.0"\nsource = { registry = "r" }\n'
@@ -107,11 +114,15 @@ def test_unsupported_lock_formats_are_rejected(tmp_path, parser, filename, conte
 
 
 def test_unsupported_lock_falls_back_to_declarations(tmp_path):
-    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\ndependencies = ["a==1.0", "b>1"]\n')
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "x"\ndependencies = ["a==1.0", "b>1"]\n'
+    )
     (tmp_path / "uv.lock").write_text("version = 99\n")
     document, _ = document_for(tmp_path, ["uv.lock"])
-    assert edges(document) == {("ROOT:pyproject.toml", "a@1.0[.]", "resolved"),
-                               ("ROOT:pyproject.toml", "?b", "unresolved")}
+    assert edges(document) == {
+        ("ROOT:pyproject.toml", "a@1.0[.]", "resolved"),
+        ("ROOT:pyproject.toml", "?b", "unresolved"),
+    }
     assert document.partial is True
 
 
@@ -119,7 +130,9 @@ def test_both_locks_without_declared_manager_are_not_merged():
     kind, path, warning = select_python_lock("pyproject.toml", None, ["poetry.lock", "uv.lock"])
     assert (kind, path) == (None, None) and "both" in warning
     assert select_python_lock("pyproject.toml", "poetry", ["poetry.lock", "uv.lock"])[:2] == (
-        "poetry", "poetry.lock")
+        "poetry",
+        "poetry.lock",
+    )
     assert select_python_lock("svc/pyproject.toml", None, ["uv.lock"]) == (None, None, None)
 
 

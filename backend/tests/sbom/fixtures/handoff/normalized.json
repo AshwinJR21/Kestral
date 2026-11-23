@@ -21,7 +21,11 @@
       "project_path": "",
       "scope": "runtime",
       "licenses": [
-        "MIT"
+        {
+          "id": "MIT",
+          "name": null,
+          "url": null
+        }
       ],
       "hashes": [],
       "evidence": [
@@ -48,7 +52,11 @@
       "project_path": "",
       "scope": "dev",
       "licenses": [
-        "MIT"
+        {
+          "id": "MIT",
+          "name": null,
+          "url": null
+        }
       ],
       "hashes": [],
       "evidence": [
@@ -70,7 +78,11 @@
       "project_path": "",
       "scope": "runtime",
       "licenses": [
-        "ISC"
+        {
+          "id": "ISC",
+          "name": null,
+          "url": null
+        }
       ],
       "hashes": [],
       "evidence": [
@@ -97,7 +109,11 @@
       "project_path": "",
       "scope": "runtime",
       "licenses": [
-        "MIT"
+        {
+          "id": "MIT",
+          "name": null,
+          "url": null
+        }
       ],
       "hashes": [
         {

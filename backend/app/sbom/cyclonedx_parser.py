@@ -44,7 +44,7 @@ class SbomComponent:
     version: str | None
     purl: str | None
     ecosystem: str | None
-    licenses: tuple[str, ...] = ()
+    licenses: tuple[tuple[str | None, str | None], ...] = ()  # (spdx_id, name)
     hashes: tuple[tuple[str, str], ...] = ()  # (algorithm, value)
     found_by: str | None = None  # Syft cataloger that found it
     package_type: str | None = None  # Syft package type, e.g. "npm", "github-action"
@@ -85,9 +85,7 @@ class ParsedSbom:
         for c in self.components:
             if c.bom_ref:
                 counts[c.bom_ref] = counts.get(c.bom_ref, 0) + 1
-        return {
-            c.bom_ref: c for c in self.components if c.bom_ref and counts[c.bom_ref] == 1
-        }
+        return {c.bom_ref: c for c in self.components if c.bom_ref and counts[c.bom_ref] == 1}
 
     def ambiguous_bom_refs(self) -> set[str]:
         """bom-refs used by more than one component (must not be mapped)."""
@@ -179,7 +177,9 @@ def _parse_component(index: int, raw: object, warnings: list[str]) -> SbomCompon
 
     properties = _properties(raw.get("properties"))
     locations = tuple(
-        value for key, value in properties if key.startswith("syft:location:") and key.endswith(":path")
+        value
+        for key, value in properties
+        if key.startswith("syft:location:") and key.endswith(":path")
     )
 
     return SbomComponent(
@@ -199,21 +199,26 @@ def _parse_component(index: int, raw: object, warnings: list[str]) -> SbomCompon
     )
 
 
-def _licenses(raw: object) -> tuple[str, ...]:
-    result: list[str] = []
+def _licenses(raw: object) -> tuple[tuple[str | None, str | None], ...]:
+    """Licenses as ``(spdx_id, name)`` pairs, matching M1's ``License{id,name}``.
+
+    An SPDX expression has no single id, so it is kept verbatim as the name.
+    """
+    result: list[tuple[str | None, str | None]] = []
     if not isinstance(raw, list):
         return ()
     for entry in raw:
         if not isinstance(entry, dict):
             continue
-        if isinstance(entry.get("expression"), str):
-            result.append(entry["expression"])
+        if isinstance(entry.get("expression"), str) and entry["expression"]:
+            result.append((None, entry["expression"]))
             continue
         lic = entry.get("license")
         if isinstance(lic, dict):
-            value = lic.get("id") or lic.get("name")
-            if isinstance(value, str):
-                result.append(value)
+            spdx_id = _str_or_none(lic.get("id"))
+            name = _str_or_none(lic.get("name"))
+            if spdx_id or name:
+                result.append((spdx_id, name))
     return tuple(dict.fromkeys(result))  # de-duplicate, keep order
 
 
@@ -223,7 +228,9 @@ def _hashes(raw: object) -> tuple[tuple[str, str], ...]:
     return tuple(
         (h["alg"], h["content"])
         for h in raw
-        if isinstance(h, dict) and isinstance(h.get("alg"), str) and isinstance(h.get("content"), str)
+        if isinstance(h, dict)
+        and isinstance(h.get("alg"), str)
+        and isinstance(h.get("content"), str)
     )
 
 
@@ -233,7 +240,9 @@ def _properties(raw: object) -> list[tuple[str, str]]:
     return [
         (p["name"], p["value"])
         for p in raw
-        if isinstance(p, dict) and isinstance(p.get("name"), str) and isinstance(p.get("value"), str)
+        if isinstance(p, dict)
+        and isinstance(p.get("name"), str)
+        and isinstance(p.get("value"), str)
     ]
 
 

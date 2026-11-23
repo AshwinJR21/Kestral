@@ -28,7 +28,10 @@ def test_pinned_requirement_is_a_direct_version_with_zero_transitives():
     assert requests.purl == "pkg:pypi/requests@2.31.0"
     assert requests.scope == "runtime"
     assert requests.evidence[0].model_dump() == {
-        "path": "requirements.txt", "kind": "manifest", "locator": "line:2"}
+        "path": "requirements.txt",
+        "kind": "manifest",
+        "locator": "line:2",
+    }
     # nothing ever depends *from* a requirements-only component
     component_ids = {c.component_id for c in document.components}
     assert not [r for r in document.relationships if r.from_id in component_ids]
@@ -36,11 +39,18 @@ def test_pinned_requirement_is_a_direct_version_with_zero_transitives():
 
 def test_range_requirement_has_unknown_version_and_unresolved_target():
     document = document_for(REQ, "requirements.txt")
-    flask = next(r for r in document.relationships
-                 if r.unresolved_target and r.unresolved_target.name == "flask")
+    flask = next(
+        r
+        for r in document.relationships
+        if r.unresolved_target and r.unresolved_target.name == "flask"
+    )
     assert flask.to_id is None
     assert flask.resolution_status == "unresolved"
-    assert flask.unresolved_target.model_dump() == {"name": "flask", "specifier": ">=2,<3", "ecosystem": "pypi"}
+    assert flask.unresolved_target.model_dump() == {
+        "name": "flask",
+        "specifier": ">=2,<3",
+        "ecosystem": "pypi",
+    }
     assert not [c for c in document.components if c.name == "flask"]  # no invented flask@x
     assert document.partial is True
 
@@ -84,7 +94,8 @@ def test_escaping_and_absolute_includes_are_rejected(tmp_path):
     repo.mkdir()
     (tmp_path / "secret.txt").write_text("leaked==1.0\n")
     (repo / "requirements.txt").write_text(
-        "-r ../secret.txt\n-r /etc/passwd\n-r https://example.invalid/r.txt\nok==1.0\n")
+        "-r ../secret.txt\n-r /etc/passwd\n-r https://example.invalid/r.txt\nok==1.0\n"
+    )
     parsed = parse_requirements(repo, "requirements.txt")
     assert list(decls(parsed)) == ["ok"]
     assert any("escapes the repository" in w for w in parsed.warnings)
@@ -149,7 +160,10 @@ def test_subproject_requirements_create_a_subproject_root(tmp_path):
     (tmp_path / "svc").mkdir()
     (tmp_path / "svc" / "requirements.txt").write_text("a==1.0\n")
     document = document_for(tmp_path, "svc/requirements.txt")
-    assert (document.roots[0].path, document.roots[0].manifest_path) == ("svc", "svc/requirements.txt")
+    assert (document.roots[0].path, document.roots[0].manifest_path) == (
+        "svc",
+        "svc/requirements.txt",
+    )
     assert document.components[0].project_path == "svc"
 
 
@@ -164,12 +178,21 @@ def test_pep621_groups_scopes_preserved(tmp_path):
     )
     parsed = decls(parse_pyproject(tmp_path, "pyproject.toml"))
     assert {n: d.scope for n, d in parsed.items()} == {
-        "a": "runtime", "b": "runtime", "c": "optional", "d": "dev", "e": "unknown"}
+        "a": "runtime",
+        "b": "runtime",
+        "c": "optional",
+        "d": "dev",
+        "e": "unknown",
+    }
     assert parsed["c"].evidence.locator == "project.optional-dependencies.fast[0]"
     document = document_for(tmp_path, "pyproject.toml")
     # extras / groups are not collapsed into unconditional runtime edges
     assert {c.name: c.scope for c in document.components} == {
-        "a": "runtime", "c": "optional", "d": "dev", "e": "unknown"}
+        "a": "runtime",
+        "c": "optional",
+        "d": "dev",
+        "e": "unknown",
+    }
 
 
 def test_dynamic_dependencies_warn_instead_of_guessing(tmp_path):

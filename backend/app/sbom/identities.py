@@ -68,6 +68,4 @@ def relationship_id(
     evidence_locators: Iterable[tuple[str, str, str]],
 ) -> str:
     target = to_id if to_id is not None else unresolved_target
-    return stable_id(
-        "rel", from_id, target, resolution_status, sorted(set(evidence_locators))
-    )
+    return stable_id("rel", from_id, target, resolution_status, sorted(set(evidence_locators)))

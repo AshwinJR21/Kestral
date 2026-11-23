@@ -62,7 +62,9 @@ def parse_uv_lock(repo_dir: Path, rel_path: str) -> ParsedLock:
     rel_path = normalize_rel_path(rel_path)
     parsed = ParsedLock(path=rel_path)
     try:
-        data = tomllib.loads(read_text_bounded(safe_repo_file(repo_dir, rel_path), MAX_LOCKFILE_BYTES))
+        data = tomllib.loads(
+            read_text_bounded(safe_repo_file(repo_dir, rel_path), MAX_LOCKFILE_BYTES)
+        )
     except (OSError, ValueError, UnsafePathError):
         parsed.supported = False
         parsed.warnings.append(f"{rel_path}: could not be parsed safely as TOML; lock ignored")
@@ -71,7 +73,8 @@ def parse_uv_lock(repo_dir: Path, rel_path: str) -> ParsedLock:
     if data.get("version") not in SUPPORTED_LOCK_VERSIONS:
         parsed.supported = False
         parsed.warnings.append(
-            f"{rel_path}: uv lock version {data.get('version')!r} is not supported (1); lock ignored"
+            f"{rel_path}: uv lock version {data.get('version')!r} is not supported (1); "
+            "lock ignored"
         )
         return parsed
 
@@ -99,7 +102,9 @@ def parse_uv_lock(repo_dir: Path, rel_path: str) -> ParsedLock:
             local=any(key in source for key in _LOCAL_SOURCES),
             hashes=_hash(record.get("sdist")),
         )
-        for entry in record.get("dependencies", []) if isinstance(record.get("dependencies"), list) else []:
+        for entry in (
+            record.get("dependencies", []) if isinstance(record.get("dependencies"), list) else []
+        ):
             dep = _dependency(entry, locator, "dependencies")
             if dep is not None:
                 package.dependencies.append(dep)

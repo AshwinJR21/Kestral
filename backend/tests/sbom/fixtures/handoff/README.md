@@ -11,6 +11,7 @@ Files in this folder:
 
 ```python
 from app.sbom import generate_dependency_document, SyftError
+
 doc = generate_dependency_document(repo_dir, inventory, scan_id, scan_dir)  # -> DependencyDocument
 ```
 
@@ -27,8 +28,8 @@ doc = generate_dependency_document(repo_dir, inventory, scan_id, scan_dir)  # ->
 |---|---|
 | IDs | `root:` / `cmp:` / `rel:` + 24 hex (SHA-256 of a canonical JSON tuple). No scan ID inside. Identical repo state gives identical IDs. |
 | `ecosystem` | `npm`, `pypi`, `github-actions` (Syft-only), `unknown` (Syft-only, no PURL). Python roots also use `pypi`. |
-| `hashes[]` | `{"alg": "SHA-512", "content": "<hex>"}` (CycloneDX naming). **Contract question for M1:** README shows only `[]`. |
-| `licenses[]` | Strings (SPDX id, name or expression). |
+| `hashes[]` | `{"alg": "SHA-512", "content": "<hex>"}`, matching M1's `ComponentHash`. |
+| `licenses[]` | M1's `License` objects: `{"id": "MIT", "name": null, "url": null}`. A bare SPDX-like token goes in `id`; free text and SPDX expressions go in `name`. |
 | evidence `kind` | `manifest`, `lockfile`, `syft-sbom` (`path` is always `sbom.cdx.json` for syft-sbom). |
 | npm locators | `dependencies.alpha` (package.json), `packages[''].dependencies.alpha`, `packages.node_modules/a`, `packages.node_modules/a.dependencies.b` |
 | Python locators | `line:N` (+ ` [marker: …]`), `project.dependencies[0]`, `tool.poetry.dependencies.x`, `package[name==ver]`, `package[name==ver].dependencies.dep` |

@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 
-from ._contract import DependencyDocument, Inventory
+from app.schemas.dependency import DependencyDocument
+from app.schemas.inventory import Inventory
+
 from .cyclonedx_parser import parse_cyclonedx
 from .normalization import finalize, reconcile_with_sbom
 from .npm_lock import LOCKFILE_NAMES, extract_npm_project, find_lockfile

@@ -38,7 +38,7 @@ def test_npm_component_fields(sbom):
     assert alpha.version == "1.0.0"
     assert alpha.purl == "pkg:npm/alpha@1.0.0"
     assert alpha.ecosystem == "npm"
-    assert alpha.licenses == ("MIT",)
+    assert alpha.licenses == (("MIT", None),)
     assert alpha.hashes == (("SHA-512", "abc123"),)
     assert alpha.found_by == "javascript-lock-cataloger"
     assert alpha.locations == ("/package-lock.json",)
@@ -46,8 +46,8 @@ def test_npm_component_fields(sbom):
 
 
 def test_license_name_and_expression(sbom):
-    assert by_name(sbom, "beta").licenses == ("Custom License",)
-    assert by_name(sbom, "Foo_Bar").licenses == ("Apache-2.0 OR MIT",)
+    assert by_name(sbom, "beta").licenses == ((None, "Custom License"),)
+    assert by_name(sbom, "Foo_Bar").licenses == ((None, "Apache-2.0 OR MIT"),)
 
 
 def test_python_name_is_normalized_but_original_kept(sbom):

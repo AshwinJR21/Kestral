@@ -64,7 +64,9 @@ def parse_poetry_lock(repo_dir: Path, rel_path: str) -> ParsedLock:
     rel_path = normalize_rel_path(rel_path)
     parsed = ParsedLock(path=rel_path)
     try:
-        data = tomllib.loads(read_text_bounded(safe_repo_file(repo_dir, rel_path), MAX_LOCKFILE_BYTES))
+        data = tomllib.loads(
+            read_text_bounded(safe_repo_file(repo_dir, rel_path), MAX_LOCKFILE_BYTES)
+        )
     except (OSError, ValueError, UnsafePathError):
         parsed.supported = False
         parsed.warnings.append(f"{rel_path}: could not be parsed safely as TOML; lock ignored")

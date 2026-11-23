@@ -68,9 +68,14 @@ def select_python_lock(
     if len(found) == 2:
         if manager in found:
             return manager, found[manager], None
-        return None, None, (
-            f"{pyproject_path}: both poetry.lock and uv.lock are present and the manager is not "
-            "declared unambiguously; neither lock is used"
+        return (
+            None,
+            None,
+            (
+                f"{pyproject_path}: both poetry.lock and uv.lock are present and the manager "
+                "is not "
+                "declared unambiguously; neither lock is used"
+            ),
         )
     if found:
         kind, path = next(iter(found.items()))
@@ -99,18 +104,27 @@ def extract_python_manifest(
 
     # requirements files carry no project name: label the root by its manifest path.
     name = parsed.name or manifest_path
-    root = RootRecord(root_id(ECOSYSTEM, project_path, manifest_path), name, project_path,
-                      manifest_path, ECOSYSTEM)
+    root = RootRecord(
+        root_id(ECOSYSTEM, project_path, manifest_path),
+        name,
+        project_path,
+        manifest_path,
+        ECOSYSTEM,
+    )
     result.roots.append(root)
 
     lock: ParsedLock | None = None
     if PurePosixPath(manifest_path).name == "pyproject.toml":
-        lock_kind, lock_path, warning = select_python_lock(manifest_path, parsed.manager, lockfile_paths)
+        lock_kind, lock_path, warning = select_python_lock(
+            manifest_path, parsed.manager, lockfile_paths
+        )
         if warning:
             result.warn(warning)
         if lock_kind and lock_path:
             used_locks.add(lock_path)
-            lock = (parse_poetry_lock if lock_kind == "poetry" else parse_uv_lock)(repo_dir, lock_path)
+            lock = (parse_poetry_lock if lock_kind == "poetry" else parse_uv_lock)(
+                repo_dir, lock_path
+            )
             for message in lock.warnings:
                 result.warn(message)
             if not lock.supported:
@@ -135,8 +149,9 @@ def _emit_declarations_only(
                 unresolved_edge(root.root_id, decl.name, decl.specifier, ECOSYSTEM, [decl.evidence])
             )
             continue
-        cid = component_id(ECOSYSTEM, decl.normalized, decl.exact_version, project_path,
-                           decl.evidence.path, None)
+        cid = component_id(
+            ECOSYSTEM, decl.normalized, decl.exact_version, project_path, decl.evidence.path, None
+        )
         component = components.get(cid)
         if component is None:
             component = ComponentRecord(
@@ -161,11 +176,15 @@ def _emit_declarations_only(
         result.relationships.append(resolved_edge(root.root_id, cid, [decl.evidence]))
 
     if unresolved:
-        result.warn(f"{root.manifest_path}: {unresolved} declarations are not pinned exactly; "
-                    "their versions are unknown and left unresolved")
+        result.warn(
+            f"{root.manifest_path}: {unresolved} declarations are not pinned exactly; "
+            "their versions are unknown and left unresolved"
+        )
     if parsed.declarations:
-        result.warn(f"{root.manifest_path}: no supported lockfile; transitive dependencies "
-                    "are unknown (declarations only)")
+        result.warn(
+            f"{root.manifest_path}: no supported lockfile; transitive dependencies "
+            "are unknown (declarations only)"
+        )
 
 
 def _emit_with_lock(
@@ -187,9 +206,13 @@ def _emit_with_lock(
             if package.normalized == project_normalized:
                 root_package = package
             continue
-        cid = component_id(ECOSYSTEM, package.normalized, package.version, project_path, lock.path, None)
+        cid = component_id(
+            ECOSYSTEM, package.normalized, package.version, project_path, lock.path, None
+        )
         evidence = Evidence(lock.path, "lockfile", package.locator)
-        existing = next((c for c in by_name.get(package.normalized, []) if c.component_id == cid), None)
+        existing = next(
+            (c for c in by_name.get(package.normalized, []) if c.component_id == cid), None
+        )
         if existing is not None:
             existing.add_evidence(evidence)
             component_of[id(package)] = existing
@@ -226,8 +249,15 @@ def _emit_with_lock(
 
     unresolved = 0
 
-    def link(from_id: str, name: str, normalized: str, version: str | None, specifier: str,
-             evidence: list[Evidence], hint: set[str] | None = None) -> ComponentRecord | None:
+    def link(
+        from_id: str,
+        name: str,
+        normalized: str,
+        version: str | None,
+        specifier: str,
+        evidence: list[Evidence],
+        hint: set[str] | None = None,
+    ) -> ComponentRecord | None:
         nonlocal unresolved
         candidates = by_name.get(normalized, [])
         if version is not None:
@@ -236,16 +266,27 @@ def _emit_with_lock(
             narrowed = [c for c in candidates if c.version in hint]
             candidates = narrowed if narrowed else candidates
         if len(candidates) == 1:
-            result.relationships.append(resolved_edge(from_id, candidates[0].component_id, evidence))
+            result.relationships.append(
+                resolved_edge(from_id, candidates[0].component_id, evidence)
+            )
             return candidates[0]
         unresolved += 1
         status = "ambiguous" if len(candidates) > 1 else "unresolved"
-        result.relationships.append(unresolved_edge(from_id, name, specifier, ECOSYSTEM, evidence, status))
+        result.relationships.append(
+            unresolved_edge(from_id, name, specifier, ECOSYSTEM, evidence, status)
+        )
         return None
 
     for decl in parsed.declarations:
-        target = link(root.root_id, decl.name, decl.normalized, decl.exact_version, decl.specifier,
-                      [decl.evidence], root_versions.get(decl.normalized))
+        target = link(
+            root.root_id,
+            decl.name,
+            decl.normalized,
+            decl.exact_version,
+            decl.specifier,
+            [decl.evidence],
+            root_versions.get(decl.normalized),
+        )
         if target is not None and target.scope == "unknown":
             target.scope = decl.scope  # lock had no scope info; the declaration does
 
@@ -254,12 +295,20 @@ def _emit_with_lock(
         if component is None:
             continue
         for dep in package.dependencies:
-            link(component.component_id, dep.name, dep.normalized, dep.version, dep.specifier,
-                 [Evidence(lock.path, "lockfile", dep.locator)])
+            link(
+                component.component_id,
+                dep.name,
+                dep.normalized,
+                dep.version,
+                dep.specifier,
+                [Evidence(lock.path, "lockfile", dep.locator)],
+            )
 
     if unresolved:
-        result.warn(f"{lock.path}: {unresolved} dependency references could not be mapped to "
-                    "exactly one locked package")
+        result.warn(
+            f"{lock.path}: {unresolved} dependency references could not be mapped to "
+            "exactly one locked package"
+        )
 
 
 __all__ = ["PyDeclaration", "extract_python_manifest", "is_requirements_file", "select_python_lock"]

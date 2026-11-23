@@ -25,14 +25,19 @@ def test_field_boundaries_cannot_collide():
 
 def test_same_purl_different_install_paths_differ():
     hoisted = component_id("npm", "alpha", "1.0.0", "", "package-lock.json", "node_modules/alpha")
-    nested = component_id("npm", "alpha", "1.0.0", "", "package-lock.json",
-                          "node_modules/beta/node_modules/alpha")
+    nested = component_id(
+        "npm", "alpha", "1.0.0", "", "package-lock.json", "node_modules/beta/node_modules/alpha"
+    )
     assert hoisted != nested
 
 
 def test_project_context_is_part_of_identity():
-    a = component_id("npm", "alpha", "1.0.0", "frontend", "frontend/package-lock.json", "node_modules/alpha")
-    b = component_id("npm", "alpha", "1.0.0", "admin", "admin/package-lock.json", "node_modules/alpha")
+    a = component_id(
+        "npm", "alpha", "1.0.0", "frontend", "frontend/package-lock.json", "node_modules/alpha"
+    )
+    b = component_id(
+        "npm", "alpha", "1.0.0", "admin", "admin/package-lock.json", "node_modules/alpha"
+    )
     assert a != b
 
 
@@ -43,11 +48,14 @@ def test_root_id_depends_on_ecosystem_project_and_manifest():
 
 def test_syft_only_namespace_never_matches_lock_instance():
     lock = component_id("npm", "alpha", "1.0.0", "", "package-lock.json", "node_modules/alpha")
-    syft = syft_only_component_id("npm", "alpha", "1.0.0", "pkg:npm/alpha@1.0.0", ["package-lock.json"])
+    syft = syft_only_component_id(
+        "npm", "alpha", "1.0.0", "pkg:npm/alpha@1.0.0", ["package-lock.json"]
+    )
     assert lock != syft
     # location order does not matter
-    assert syft == syft_only_component_id("npm", "alpha", "1.0.0", "pkg:npm/alpha@1.0.0",
-                                          ["package-lock.json"])
+    assert syft == syft_only_component_id(
+        "npm", "alpha", "1.0.0", "pkg:npm/alpha@1.0.0", ["package-lock.json"]
+    )
 
 
 def test_relationship_id_covers_status_target_and_evidence():
@@ -56,8 +64,9 @@ def test_relationship_id_covers_status_target_and_evidence():
     target = {"name": "alpha", "specifier": "^1", "ecosystem": "npm"}
     unresolved = relationship_id("root:1", None, target, "unresolved", ev)
     ambiguous = relationship_id("root:1", None, target, "ambiguous", ev)
-    other_evidence = relationship_id("root:1", "cmp:2", None, "resolved",
-                                     [("package-lock.json", "lockfile", "x")])
+    other_evidence = relationship_id(
+        "root:1", "cmp:2", None, "resolved", [("package-lock.json", "lockfile", "x")]
+    )
     assert len({resolved, unresolved, ambiguous, other_evidence}) == 4
     assert relationship_id("root:1", "cmp:2", None, "resolved", ev + ev) == resolved
 
