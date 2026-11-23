@@ -2,7 +2,7 @@
 
 **Branch:** `feature/frontend` · **Review:** Member 4 (M1 reviews API integration) · **Primary outcome:** a visually polished, truthful, responsive application that accepts a public GitHub URL, polls scan progress and renders searchable/selectable dependency nodes from Cytoscape-compatible JSON.
 
-> **You can build the whole frontend against mock JSON before FastAPI/Syft/NetworkX exist.** All API shapes, statuses and graph semantics are fixed by [`README.md`](README.md); OS-specific installation is in [`SETUP.md`](SETUP.md). Do **not** generate alternate backend contracts.
+> **You can build the whole frontend against mock JSON before FastAPI/Syft/NetworkX exist.** All API shapes, statuses and graph semantics are fixed by [`README.md`](../README.md); OS-specific installation is in [`SETUP.md`](../SETUP.md). Do **not** generate alternate backend contracts.
 
 ## Ownership and scope
 

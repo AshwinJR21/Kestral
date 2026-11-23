@@ -2,7 +2,7 @@
 
 **Branch:** `feature/sbom-extraction` · **Review:** Member 4 (M2 also reviews inventory handoff) · **Primary outcome:** convert one safely cloned repository and a canonical `Inventory` into (1) a real CycloneDX JSON artifact and (2) a deterministic, **evidence-backed** `DependencyDocument` containing resolved and explicitly unresolved relationships.
 
-> **Most important technical rule:** a list of packages is **not** necessarily a dependency tree. Never invent package versions, transitive edges, installation locations, environments or source evidence. Read [`README.md`](README.md) for the canonical `DependencyDocument` schema, and [`SETUP.md`](SETUP.md) for Syft installation and OS commands.
+> **Most important technical rule:** a list of packages is **not** necessarily a dependency tree. Never invent package versions, transitive edges, installation locations, environments or source evidence. Read [`README.md`](../README.md) for the canonical `DependencyDocument` schema, and [`SETUP.md`](../SETUP.md) for Syft installation and OS commands.
 
 ## Scope and ownership
 

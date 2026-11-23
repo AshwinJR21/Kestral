@@ -2,7 +2,7 @@
 
 **Branch:** `feature/graph-engine` · **Review:** Member 3 (M5 reviews graph payload consumption) · **Primary outcome:** consume a canonical normalized dependency document and export a deterministic, Cytoscape-compatible directed graph containing project roots, real package instances, relationships, evidence and transparent unknowns.
 
-> Graph correctness is more important than visual density. Never connect packages simply because their names, versions or PURLs appear related. Read [`README.md`](README.md) for the **normative** `DependencyDocument` and `GraphDocument` contracts; [`SETUP.md`](SETUP.md) for Python tests. You can develop **entirely from mocked normalized JSON before Syft is available**.
+> Graph correctness is more important than visual density. Never connect packages simply because their names, versions or PURLs appear related. Read [`README.md`](../README.md) for the **normative** `DependencyDocument` and `GraphDocument` contracts; [`SETUP.md`](../SETUP.md) for Python tests. You can develop **entirely from mocked normalized JSON before Syft is available**.
 
 ## Ownership and boundaries
 

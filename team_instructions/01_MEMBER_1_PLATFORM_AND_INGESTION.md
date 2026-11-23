@@ -2,7 +2,7 @@
 
 **Branch:** `feature/ingestion` · **Review:** Member 2; contracts also reviewed by their producer/consumer · **Primary outcome:** `POST /api/v1/scans` asynchronously creates a real scan, clones a permitted GitHub repo safely, invokes modules owned by M2–M4 and serves results consumed by M5.
 
-> Read [`README.md`](README.md) for **canonical API/data contracts** and [`SETUP.md`](SETUP.md) for Windows/macOS setup. Do **not** create a second JSON contract. This plan builds the shared skeleton **first** so the other four can commit independently.
+> Read [`README.md`](../README.md) for **canonical API/data contracts** and [`SETUP.md`](../SETUP.md) for Windows/macOS setup. Do **not** create a second JSON contract. This plan builds the shared skeleton **first** so the other four can commit independently.
 
 ## Scope / architectural decisions
 

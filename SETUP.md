@@ -53,7 +53,7 @@ If your terminal cannot find `brew` or `python3.12`, follow Homebrew's `shellenv
 
 ## 2. Create the repository, clone it, branch (everyone)
 
-**Only the repository owner/M1:** Create an empty **private team GitHub repository** for *our application source code* (can remain private); add five collaborators with push access; enable branch protection on `main` (PR required and checks where available). Commit these **seven Markdown docs** into the repo root before coding. Do **not** add the internal Bosch PDF to a public repo.
+**Only the repository owner/M1:** Create an empty **private team GitHub repository** for *our application source code* (can remain private); add five collaborators with push access; enable branch protection on `main` (PR required and checks where available). Commit `README.md` and `SETUP.md` at the root plus the five plans in `team_instructions/` before coding. Do **not** add the internal Bosch PDF to a public repo.
 
 Every developer then uses **their actual repo URL** (placeholder below is not a functioning address):
 
